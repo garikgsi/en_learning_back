@@ -1,0 +1,17 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "English Learning (Docker)",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "en_learning",
+      "Username": "en_learning",
+      "SSLMode": "prefer",
+      "ConnectionParameters": {
+        "sslmode": "prefer",
+        "passfile": ".pgpass"
+      }
+    }
+  }
+}
