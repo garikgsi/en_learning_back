@@ -31,7 +31,17 @@ class DictionaryController extends Controller
         $availableGrade = max(0, now()->year - $userInfo->first_grade_year);
 
         $query = Word::query()
-            ->where('grade', '<=', $availableGrade);
+            ->where('grade', '<=', $availableGrade)
+            ->withCount([
+                'repeats as repeat_count' => fn ($query) => $query
+                    ->where('user_id', $user->id),
+                'repeats as successful_repeat_count' => fn ($query) => $query
+                    ->where('user_id', $user->id)
+                    ->where('errors_count', 0),
+                'repeats as failed_repeat_count' => fn ($query) => $query
+                    ->where('user_id', $user->id)
+                    ->where('errors_count', '>', 0),
+            ]);
 
         if ($search !== '') {
             $escapedSearch = str_replace(
@@ -52,8 +62,7 @@ class DictionaryController extends Controller
         }
 
         $words = $query
-            ->orderBy('grade')
-            ->orderBy('id')
+            ->orderBy('ru')
             ->paginate($perPage);
 
         return response()->json([

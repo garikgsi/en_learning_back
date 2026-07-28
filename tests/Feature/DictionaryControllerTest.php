@@ -65,6 +65,38 @@ class DictionaryControllerTest extends TestCase
             ->assertJsonPath('items.0.id', $second->id);
     }
 
+    public function test_dictionary_counts_repeats_only_for_current_user(): void
+    {
+        $user = $this->userWithFirstGradeYear(now()->year - 5);
+        $otherUser = $this->userWithFirstGradeYear(now()->year - 5);
+        $word = $this->createWord('дом', 'home', 1);
+
+        $word->repeats()->createMany([
+            [
+                'user_id' => $user->id,
+                'errors_count' => 0,
+                'hints_count' => 0,
+            ],
+            [
+                'user_id' => $user->id,
+                'errors_count' => 2,
+                'hints_count' => 1,
+            ],
+            [
+                'user_id' => $otherUser->id,
+                'errors_count' => 0,
+                'hints_count' => 0,
+            ],
+        ]);
+
+        $this->withToken($this->accessToken($user))
+            ->getJson('/api/v1/dictionary')
+            ->assertOk()
+            ->assertJsonPath('items.0.repeatCount', 2)
+            ->assertJsonPath('items.0.successfulRepeatCount', 1)
+            ->assertJsonPath('items.0.failedRepeatCount', 1);
+    }
+
     public function test_search_treats_like_wildcards_as_plain_text(): void
     {
         $user = $this->userWithFirstGradeYear(now()->year - 5);
