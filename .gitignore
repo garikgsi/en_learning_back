@@ -20,6 +20,7 @@
 /storage/*.key
 /storage/pail
 /vendor
+api_docs/http-client.private.env.json
 _ide_helper.php
 Homestead.json
 Homestead.yaml

@@ -4,6 +4,8 @@ use App\Models\User;
 
 return [
 
+    'pin_pepper' => env('AUTH_PIN_PEPPER'),
+
     /*
     |--------------------------------------------------------------------------
     | Authentication Defaults

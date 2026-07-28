@@ -1,0 +1,51 @@
+### Get current user
+# @name getCurrentUser
+GET {{baseUrl}}/api/v1/users/me
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+###
+
+### Update current user's name
+# @name updateUserName
+PATCH {{baseUrl}}/api/v1/users/me
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "New name"
+}
+
+### Update current user's avatar
+# Send the request as POST with method spoofing so PHP can read multipart files.
+# Replace the path below with an existing image on your machine.
+# @name updateUserAvatar
+POST {{baseUrl}}/api/v1/users/me
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="_method"
+
+PATCH
+--WebAppBoundary
+Content-Disposition: form-data; name="avatar"; filename="avatar.png"
+Content-Type: image/png
+
+< C:/path/to/avatar.png
+--WebAppBoundary--
+
+### Change PIN and revoke all active sessions
+# @name updatePin
+PUT {{baseUrl}}/api/v1/users/me/pin
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "currentPin": "1234",
+  "pinCode": "5678",
+  "pinCodeConfirmation": "5678"
+}

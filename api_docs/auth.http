@@ -1,0 +1,56 @@
+### Register user and receive a token pair
+# @name register
+POST {{baseUrl}}/api/v1/auth/register
+Accept: application/json
+Content-Type: application/json
+
+{
+  "name": "Ivan",
+  "phone": "+79991234567",
+  "pinCode": "1234"
+}
+
+> {%
+    client.global.set("accessToken", response.body.accessToken);
+    client.global.set("refreshToken", response.body.refreshToken);
+%}
+
+### Log in
+# Three failed attempts per hour are allowed for one user.
+# The limiter key does not contain the client IP address.
+# @name login
+POST {{baseUrl}}/api/v1/auth/login
+Accept: application/json
+Content-Type: application/json
+
+{
+  "phone": "+79991234567",
+  "pinCode": "1234"
+}
+
+> {%
+    client.global.set("accessToken", response.body.accessToken);
+    client.global.set("refreshToken", response.body.refreshToken);
+%}
+
+### Rotate the refresh token and receive a new token pair
+# @name refreshToken
+POST {{baseUrl}}/api/v1/auth/refresh
+Accept: application/json
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+> {%
+    client.global.set("accessToken", response.body.accessToken);
+    client.global.set("refreshToken", response.body.refreshToken);
+%}
+
+### Log out and revoke the current session
+# @name logout
+POST {{baseUrl}}/api/v1/auth/logout
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
