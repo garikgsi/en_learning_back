@@ -1,0 +1,7 @@
+### Get a page of words available to the current user
+# Words are limited by: grade <= current year - first_grade_year.
+# @name getDictionary
+GET {{baseUrl}}/api/v1/dictionary?search=дом&page=1&perPage=30
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+

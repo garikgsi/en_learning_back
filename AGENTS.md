@@ -8,4 +8,5 @@
   multipart examples where applicable.
 - Never commit real access tokens, PIN codes, passwords, or other secrets to the
   HTTP Client files.
-
+- Never configure cascading deletes for database foreign keys. Deleting a
+  referenced parent row must be rejected while related rows exist.

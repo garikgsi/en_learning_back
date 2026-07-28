@@ -27,6 +27,12 @@ class RegisterRequest extends FormRequest
                 Rule::unique('users', 'phone'),
             ],
             'pinCode' => ['required', 'string', 'regex:/^\d{4}$/'],
+            'firstGradeYear' => [
+                'required',
+                'integer',
+                'min:1900',
+                'max:'.now()->year,
+            ],
         ];
     }
 

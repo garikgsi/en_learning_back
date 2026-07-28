@@ -17,6 +17,7 @@ class RegisterControllerTest extends TestCase
             'name' => '  Ivan  ',
             'phone' => '8 (999) 123-45-67',
             'pinCode' => '1234',
+            'firstGradeYear' => 2010,
         ]);
 
         $response
@@ -36,6 +37,7 @@ class RegisterControllerTest extends TestCase
         $user = User::query()->sole();
 
         $this->assertTrue(app(PinHasher::class)->check('1234', $user->pin_hash));
+        $this->assertSame(2010, $user->info()->sole()->first_grade_year);
     }
 
     public function test_registration_rejects_duplicate_phone(): void
@@ -46,6 +48,7 @@ class RegisterControllerTest extends TestCase
             'name' => 'Ivan',
             'phone' => '+79991234567',
             'pinCode' => '1234',
+            'firstGradeYear' => 2010,
         ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('phone');
@@ -57,6 +60,7 @@ class RegisterControllerTest extends TestCase
             'name' => 'Ivan',
             'phone' => '+79991234567',
             'pinCode' => '123',
+            'firstGradeYear' => 2010,
         ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('pinCode');
@@ -68,8 +72,29 @@ class RegisterControllerTest extends TestCase
             'name' => 'Ivan',
             'phone' => '+8 (999) 123-45-67',
             'pinCode' => '1234',
+            'firstGradeYear' => 2010,
         ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('phone');
+    }
+
+    public function test_registration_requires_valid_first_grade_year(): void
+    {
+        $this->postJson('/api/v1/auth/register', [
+            'name' => 'Ivan',
+            'phone' => '+79991234567',
+            'pinCode' => '1234',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('firstGradeYear');
+
+        $this->postJson('/api/v1/auth/register', [
+            'name' => 'Ivan',
+            'phone' => '+79991234567',
+            'pinCode' => '1234',
+            'firstGradeYear' => now()->year + 1,
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('firstGradeYear');
     }
 }

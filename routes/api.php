@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\Auth\LoginController;
 use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\RefreshTokenController;
 use App\Http\Controllers\Api\V1\Auth\RegisterController;
+use App\Http\Controllers\Api\V1\DictionaryController;
 use App\Http\Controllers\Api\V1\UpdatePinController;
 use App\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\Route;
@@ -20,5 +21,6 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/users/me', [UserController::class, 'show']);
         Route::patch('/users/me', [UserController::class, 'update']);
         Route::put('/users/me/pin', UpdatePinController::class);
+        Route::get('/dictionary', [DictionaryController::class, 'index']);
     });
 });

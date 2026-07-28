@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('auth_sessions', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignUuid('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('user_id')->constrained();
             $table->char('access_token_hash', 64)->unique();
             $table->char('refresh_token_hash', 64)->unique();
             $table->timestamp('access_expires_at');
