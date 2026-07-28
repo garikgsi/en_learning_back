@@ -1,95 +1,142 @@
 # English Learning API
 
-Backend API for the English Learning application. The project uses Laravel 13,
-PHP 8.5 FPM, Nginx, and PostgreSQL 18.
+Backend API приложения для изучения английского языка. Стек: Laravel 13,
+PHP-FPM 8.5, Nginx и PostgreSQL 18.
 
-## Requirements
+## Требования
 
-- Docker Desktop with Docker Compose
+- Git;
+- Docker Desktop с Docker Compose.
 
-No local PHP, Composer, Nginx, or PostgreSQL installation is required.
+Локальная установка PHP, Composer, Nginx и PostgreSQL не требуется.
 
-## First run
+## Первый запуск
+
+Клонируйте репозиторий, перейдите в его корень и создайте локальный файл
+окружения:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Для Linux и macOS:
 
 ```bash
 cp .env.example .env
+```
+
+Соберите и запустите контейнеры, затем подготовьте Laravel:
+
+```bash
 docker compose up -d --build
+docker compose exec app composer install
 docker compose exec app php artisan key:generate
 docker compose exec app php artisan migrate
 ```
 
-On Windows PowerShell, use `Copy-Item .env.example .env` instead of `cp`.
+После запуска доступны:
 
-The application is available at <http://localhost:8088>. The health endpoint is
-<http://localhost:8088/up>. PostgreSQL is available to host tools at
-`localhost:5432`.
+- API: <http://localhost:8088>;
+- проверка состояния: <http://localhost:8088/up>;
+- PostgreSQL для локальных клиентов: `localhost:5432`;
+- pgAdmin: <http://localhost:5050>.
 
-### pgAdmin
+Данные для входа в pgAdmin по умолчанию:
 
-Open <http://localhost:5050> and sign in with:
+- email: `pgadmin4@pgadmin.org`;
+- пароль: `admin`.
 
-- Email: `pgadmin4@pgadmin.org`
-- Password: `admin`
+Сервер `English Learning (Docker)` регистрируется автоматически. Параметры
+подключения к базе внутри Docker:
 
-The `English Learning (Docker)` server is registered automatically:
+- host: `postgres`;
+- port: `5432`;
+- database: `en_learning`;
+- username: `en_learning`;
+- password: `en_learning`.
 
-- Host: `postgres`
-- Port: `5432`
-- Database: `en_learning`
-- Username: `en_learning`
-- Password: `en_learning`
+Это локальные данные для разработки. Их можно изменить в `.env`. При изменении
+пароля базы также обновите `docker/pgadmin/pgpass`.
 
-These are development-only credentials and can be changed in `.env`. If the
-database password is changed, update `docker/pgadmin/pgpass` as well.
-
-## Daily commands
+## Ежедневная работа
 
 ```bash
-# Start
+# Запустить окружение
 docker compose up -d
 
-# Stop
-docker compose down
+# Посмотреть состояние контейнеров
+docker compose ps
 
-# Follow logs
+# Следить за логами
 docker compose logs -f
 
-# Run Artisan or Composer
+# Применить новые миграции
 docker compose exec app php artisan migrate
-docker compose exec app composer install
 
-# Run tests and formatting
-docker compose exec app composer test
-docker compose exec app vendor/bin/pint --test
+# Открыть Laravel Tinker
+docker compose exec app php artisan tinker
+
+# Остановить окружение
+docker compose down
 ```
 
-## PHP debugging
+Исходники примонтированы в контейнеры `app` и `nginx`, поэтому изменения PHP-кода
+применяются без пересборки. Пересобирайте образ после изменения `Dockerfile`,
+PHP-расширений или конфигурации PHP:
 
-Xdebug 3 step debugging is enabled in the development environment:
+```bash
+docker compose build app
+docker compose up -d --force-recreate app
+```
+
+## Проверка изменений
+
+```bash
+# Тесты
+docker compose exec app composer test
+
+# Проверка форматирования PHP
+docker compose exec app vendor/bin/pint --test
+
+# Автоматическое форматирование PHP
+docker compose exec app vendor/bin/pint
+```
+
+## Отладка PHP
+
+Xdebug 3 включён в локальном окружении и подключается к хосту на порт `9003`.
+В `.env` должно быть:
 
 ```dotenv
 XDEBUG_MODE=debug,develop
 ```
 
+После изменения режима пересоздайте контейнер:
+
 ```bash
 docker compose up -d --force-recreate app
 ```
 
-Xdebug connects to the host on port `9003` at the start of each request. A ready-to-use VS Code
-`Listen for Xdebug (Docker)` configuration is included. In PhpStorm, configure a
-server named `en-learning-back` with host `localhost`, port `8088`, and path
-mapping from the project root to `/var/www/html`.
+Для VS Code в репозитории есть конфигурация `Listen for Xdebug (Docker)`. В
+PhpStorm создайте сервер `en-learning-back` с host `localhost`, port `8088` и
+сопоставлением корня проекта с `/var/www/html`.
 
-Application files are bind-mounted into the PHP-FPM and Nginx containers, so
-source changes are immediately visible without rebuilding. Rebuild the `app`
-image only after changing the Dockerfile, PHP extensions, or PHP configuration:
+## Настройка окружения
 
-```bash
-docker compose build app
-```
+`.env.example` содержит безопасные значения для локальной разработки. Если порт
+занят, измените `APP_PORT`, `DB_FORWARD_PORT` или `PGADMIN_PORT` в `.env`.
+Значение `AUTH_PIN_PEPPER` также следует заменить локальным секретом.
 
-## Configuration
+Файл `.env` содержит локальные настройки и секреты — не добавляйте его в Git.
 
-The checked-in `.env.example` contains safe development defaults. Change
-`APP_PORT` or `DB_FORWARD_PORT` if the host ports are already occupied. Never
-commit `.env`.
+## Запуск вместе с фронтендом
+
+Сначала запустите этот проект. Затем в репозитории фронтенда
+`en_learning_tg_app` создайте `.env` из `.env.example` и выполните `npm run dev`.
+Фронтенд будет доступен на <http://localhost:3000> и по умолчанию отправит
+API-запросы на <http://localhost:8088>.
+
+## Production
+
+Требования к production-конфигурации, порядок релиза, резервного копирования и
+отката описаны в [DEPLOY.md](DEPLOY.md).
