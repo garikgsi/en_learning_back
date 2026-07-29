@@ -24,6 +24,16 @@ class UserInfoModelTest extends TestCase
         $this->assertTrue($info->user->is($user));
     }
 
+    public function test_user_grade_is_computed_from_first_grade_year(): void
+    {
+        $user = User::factory()->create();
+        $user->info()->create([
+            'first_grade_year' => now()->year - 5,
+        ]);
+
+        $this->assertSame(5, $user->grade);
+    }
+
     public function test_user_can_have_only_one_user_info_record(): void
     {
         $user = User::factory()->create();

@@ -5,6 +5,7 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -41,5 +42,25 @@ class User extends Authenticatable
     public function wordRepeats(): HasMany
     {
         return $this->hasMany(WordRepeat::class);
+    }
+
+    /**
+     * @return HasMany<Exercise, $this>
+     */
+    public function exercises(): HasMany
+    {
+        return $this->hasMany(Exercise::class);
+    }
+
+    /**
+     * @return Attribute<int|null, never>
+     */
+    protected function grade(): Attribute
+    {
+        return Attribute::get(
+            fn (): ?int => $this->info === null
+                ? null
+                : max(0, now()->year - $this->info->first_grade_year),
+        );
     }
 }

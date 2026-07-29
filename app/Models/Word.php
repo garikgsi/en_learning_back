@@ -18,6 +18,14 @@ class Word extends Model
     }
 
     /**
+     * @return HasMany<ExerciseItem, $this>
+     */
+    public function exerciseItems(): HasMany
+    {
+        return $this->hasMany(ExerciseItem::class);
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array

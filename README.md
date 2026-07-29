@@ -89,12 +89,40 @@ docker compose build app
 docker compose up -d --force-recreate app
 ```
 
+## Тестирование
+
+Тесты запускаются внутри контейнера `app`. Перед первым запуском убедитесь, что
+контейнеры собраны и запущены:
+
+```bash
+docker compose up -d
+```
+
+Запуск всех тестов:
+
+```bash
+docker compose exec app composer test
+```
+
+Запуск отдельного файла:
+
+```bash
+docker compose exec app php artisan test tests/Feature/ExerciseControllerTest.php
+```
+
+Запуск одного теста по имени:
+
+```bash
+docker compose exec app php artisan test --filter=test_it_returns_current_users_exercises_for_inclusive_period
+```
+
+Тестовая среда использует SQLite в памяти согласно настройкам `phpunit.xml`.
+Каждый запуск начинает работу с чистой тестовой базой и не изменяет локальную
+PostgreSQL.
+
 ## Проверка изменений
 
 ```bash
-# Тесты
-docker compose exec app composer test
-
 # Проверка форматирования PHP
 docker compose exec app vendor/bin/pint --test
 

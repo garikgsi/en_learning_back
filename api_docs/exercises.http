@@ -1,0 +1,11 @@
+### Get exercises for an inclusive period
+# @name getExercisesForPeriod
+GET {{baseUrl}}/api/v1/exercises?dateFrom=2026-07-29T00:00:00%2B03:00&dateTo=2026-07-29T23:59:59%2B03:00
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+### Get exercises due today
+# @name getCurrentExercises
+GET {{baseUrl}}/api/v1/exercises/current
+Accept: application/json
+Authorization: Bearer {{accessToken}}

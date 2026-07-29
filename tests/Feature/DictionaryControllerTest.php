@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Exercise;
+use App\Models\ExerciseType;
 use App\Models\User;
 use App\Models\Word;
 use App\Services\Auth\AuthTokenService;
@@ -51,9 +53,9 @@ class DictionaryControllerTest extends TestCase
     {
         $user = $this->userWithFirstGradeYear(now()->year - 5);
 
-        $this->createWord('один', 'one', 1);
-        $second = $this->createWord('два', 'two', 1);
-        $this->createWord('три', 'three', 1);
+        $this->createWord('альфа', 'alpha', 1);
+        $second = $this->createWord('бета', 'beta', 1);
+        $this->createWord('гамма', 'gamma', 1);
 
         $this->withToken($this->accessToken($user))
             ->getJson('/api/v1/dictionary?page=2&perPage=1')
@@ -70,20 +72,25 @@ class DictionaryControllerTest extends TestCase
         $user = $this->userWithFirstGradeYear(now()->year - 5);
         $otherUser = $this->userWithFirstGradeYear(now()->year - 5);
         $word = $this->createWord('дом', 'home', 1);
+        $exercise = $this->createExercise($user);
+        $otherExercise = $this->createExercise($otherUser);
 
         $word->repeats()->createMany([
             [
                 'user_id' => $user->id,
+                'exercise_id' => $exercise->id,
                 'errors_count' => 0,
                 'hints_count' => 0,
             ],
             [
                 'user_id' => $user->id,
+                'exercise_id' => $exercise->id,
                 'errors_count' => 2,
                 'hints_count' => 1,
             ],
             [
                 'user_id' => $otherUser->id,
+                'exercise_id' => $otherExercise->id,
                 'errors_count' => 0,
                 'hints_count' => 0,
             ],
@@ -143,6 +150,20 @@ class DictionaryControllerTest extends TestCase
             'ru' => $ru,
             'en' => $en,
             'grade' => $grade,
+        ]);
+    }
+
+    private function createExercise(User $user): Exercise
+    {
+        $type = ExerciseType::query()->firstOrCreate(
+            ['name' => 'translation'],
+            ['title' => 'Translate the word'],
+        );
+
+        return Exercise::query()->create([
+            'user_id' => $user->id,
+            'type_id' => $type->id,
+            'dueDate' => now()->addDay(),
         ]);
     }
 

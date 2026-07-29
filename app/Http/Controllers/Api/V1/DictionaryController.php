@@ -28,7 +28,7 @@ class DictionaryController extends Controller
         $validated = $request->validated();
         $search = $validated['search'] ?? '';
         $perPage = $validated['perPage'] ?? 30;
-        $availableGrade = max(0, now()->year - $userInfo->first_grade_year);
+        $availableGrade = $user->grade;
 
         $query = Word::query()
             ->where('grade', '<=', $availableGrade)

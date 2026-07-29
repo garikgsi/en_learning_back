@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Exercise;
+use App\Models\ExerciseType;
 use App\Models\User;
 use App\Models\Word;
 use Illuminate\Database\QueryException;
@@ -20,9 +22,11 @@ class WordRepeatModelTest extends TestCase
             'en' => 'word',
             'grade' => 1,
         ]);
+        $exercise = $this->createExercise($user);
 
         $repeat = $word->repeats()->create([
             'user_id' => $user->id,
+            'exercise_id' => $exercise->id,
             'errors_count' => 2,
             'hints_count' => 1,
         ]);
@@ -31,6 +35,8 @@ class WordRepeatModelTest extends TestCase
         $this->assertTrue($repeat->word->is($word));
         $this->assertTrue($repeat->user->is($user));
         $this->assertTrue($user->refresh()->wordRepeats->first()->is($repeat));
+        $this->assertTrue($repeat->exercise->is($exercise));
+        $this->assertTrue($exercise->wordRepeats->first()->is($repeat));
     }
 
     public function test_word_with_repeats_cannot_be_deleted(): void
@@ -41,8 +47,10 @@ class WordRepeatModelTest extends TestCase
             'en' => 'word',
             'grade' => 1,
         ]);
+        $exercise = $this->createExercise($user);
         $word->repeats()->create([
             'user_id' => $user->id,
+            'exercise_id' => $exercise->id,
             'errors_count' => 0,
             'hints_count' => 0,
         ]);
@@ -50,5 +58,19 @@ class WordRepeatModelTest extends TestCase
         $this->expectException(QueryException::class);
 
         $word->delete();
+    }
+
+    private function createExercise(User $user): Exercise
+    {
+        $type = ExerciseType::query()->create([
+            'name' => 'translation',
+            'title' => 'Translate the word',
+        ]);
+
+        return Exercise::query()->create([
+            'user_id' => $user->id,
+            'type_id' => $type->id,
+            'dueDate' => now()->addDay(),
+        ]);
     }
 }

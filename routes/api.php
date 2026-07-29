@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\RefreshTokenController;
 use App\Http\Controllers\Api\V1\Auth\RegisterController;
 use App\Http\Controllers\Api\V1\DictionaryController;
+use App\Http\Controllers\Api\V1\ExerciseController;
 use App\Http\Controllers\Api\V1\UpdatePinController;
 use App\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\Route;
@@ -22,5 +23,7 @@ Route::prefix('v1')->group(function (): void {
         Route::patch('/users/me', [UserController::class, 'update']);
         Route::put('/users/me/pin', UpdatePinController::class);
         Route::get('/dictionary', [DictionaryController::class, 'index']);
+        Route::get('/exercises', [ExerciseController::class, 'index']);
+        Route::get('/exercises/current', [ExerciseController::class, 'current']);
     });
 });

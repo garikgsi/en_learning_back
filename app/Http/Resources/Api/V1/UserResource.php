@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Storage;
 class UserResource extends JsonResource
 {
     /**
-     * @return array<string, string>
+     * @return array<string, int|string|null>
      */
     public function toArray(Request $request): array
     {
@@ -17,6 +17,7 @@ class UserResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'phone' => $this->phone,
+            'grade' => $this->grade,
             'avatar' => $this->avatar_path
                 ? Storage::disk('public')->url($this->avatar_path)
                 : '',
