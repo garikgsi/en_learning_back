@@ -13,6 +13,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
+/**
+ * @property-read int|null $grade
+ */
 #[Fillable(['phone', 'name', 'avatar_path'])]
 #[Hidden(['pin_hash'])]
 class User extends Authenticatable
@@ -37,19 +40,19 @@ class User extends Authenticatable
     }
 
     /**
-     * @return HasMany<WordRepeat, $this>
-     */
-    public function wordRepeats(): HasMany
-    {
-        return $this->hasMany(WordRepeat::class);
-    }
-
-    /**
      * @return HasMany<Exercise, $this>
      */
     public function exercises(): HasMany
     {
         return $this->hasMany(Exercise::class);
+    }
+
+    /**
+     * @return HasMany<UserWordRepetition, $this>
+     */
+    public function wordRepetitions(): HasMany
+    {
+        return $this->hasMany(UserWordRepetition::class);
     }
 
     /**

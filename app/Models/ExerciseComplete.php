@@ -7,9 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['exercise_id', 'word_id'])]
-class ExerciseItem extends Model
+#[Fillable(['exercise_id'])]
+class ExerciseComplete extends Model
 {
+    protected $table = 'exercise_complete';
+
     /**
      * @return BelongsTo<Exercise, $this>
      */
@@ -19,18 +21,13 @@ class ExerciseItem extends Model
     }
 
     /**
-     * @return BelongsTo<Word, $this>
-     */
-    public function word(): BelongsTo
-    {
-        return $this->belongsTo(Word::class);
-    }
-
-    /**
      * @return HasMany<ExerciseItemResult, $this>
      */
-    public function results(): HasMany
+    public function itemResults(): HasMany
     {
-        return $this->hasMany(ExerciseItemResult::class);
+        return $this->hasMany(
+            ExerciseItemResult::class,
+            'exercise_complete_id',
+        );
     }
 }

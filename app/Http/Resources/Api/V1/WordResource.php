@@ -8,7 +8,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class WordResource extends JsonResource
 {
     /**
-     * @return array<string, int|string>
+     * @return array<string, bool|int|string>
      */
     public function toArray(Request $request): array
     {
@@ -20,6 +20,7 @@ class WordResource extends JsonResource
             'repeatCount' => (int) ($this->repeat_count ?? 0),
             'successfulRepeatCount' => (int) ($this->successful_repeat_count ?? 0),
             'failedRepeatCount' => (int) ($this->failed_repeat_count ?? 0),
+            'is_active' => (bool) ($this->is_active ?? false),
         ];
     }
 }

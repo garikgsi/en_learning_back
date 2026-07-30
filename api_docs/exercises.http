@@ -9,3 +9,29 @@ Authorization: Bearer {{accessToken}}
 GET {{baseUrl}}/api/v1/exercises/current
 Accept: application/json
 Authorization: Bearer {{accessToken}}
+
+### Get exercise statistics for an inclusive period
+# @name getExerciseStatistics
+GET {{baseUrl}}/api/v1/exercises/statistics?dateFrom=2026-07-01T00:00:00%2B03:00&dateTo=2026-07-31T23:59:59%2B03:00
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+### Save exercise completion results
+# @name completeExercise
+POST {{baseUrl}}/api/v1/exercises/complete
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "exercise_id": 1,
+    "exercise_items_result": [
+        {
+            "exercise_item_id": 1,
+            "errors_count": 1,
+            "hints_count": 0,
+            "lang_id": 1,
+            "variants": ["cat", "cut"]
+        }
+    ]
+}

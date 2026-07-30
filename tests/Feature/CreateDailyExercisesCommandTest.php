@@ -30,8 +30,8 @@ class CreateDailyExercisesCommandTest extends TestCase
 
         foreach (range(1, 5) as $number) {
             Word::query()->create([
-                'ru' => "слово {$number}",
-                'en' => "word {$number}",
+                'ru' => "слово{$number}",
+                'en' => "word{$number}",
                 'grade' => 3,
             ]);
         }

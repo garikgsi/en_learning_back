@@ -2,11 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Enums\LangCode;
 use App\Models\Exercise;
+use App\Models\ExerciseItemResult;
 use App\Models\ExerciseType;
 use App\Models\User;
+use App\Models\UserWordRepetition;
 use App\Models\Word;
 use App\Services\Auth\AuthTokenService;
+use Database\Seeders\LangSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -69,32 +73,17 @@ class DictionaryControllerTest extends TestCase
 
     public function test_dictionary_counts_repeats_only_for_current_user(): void
     {
+        $this->seed(LangSeeder::class);
+
         $user = $this->userWithFirstGradeYear(now()->year - 5);
         $otherUser = $this->userWithFirstGradeYear(now()->year - 5);
         $word = $this->createWord('дом', 'home', 1);
         $exercise = $this->createExercise($user);
         $otherExercise = $this->createExercise($otherUser);
 
-        $word->repeats()->createMany([
-            [
-                'user_id' => $user->id,
-                'exercise_id' => $exercise->id,
-                'errors_count' => 0,
-                'hints_count' => 0,
-            ],
-            [
-                'user_id' => $user->id,
-                'exercise_id' => $exercise->id,
-                'errors_count' => 2,
-                'hints_count' => 1,
-            ],
-            [
-                'user_id' => $otherUser->id,
-                'exercise_id' => $otherExercise->id,
-                'errors_count' => 0,
-                'hints_count' => 0,
-            ],
-        ]);
+        $this->createResult($exercise, $word, 0);
+        $this->createResult($exercise, $word, 2);
+        $this->createResult($otherExercise, $word, 0);
 
         $this->withToken($this->accessToken($user))
             ->getJson('/api/v1/dictionary')
@@ -102,6 +91,39 @@ class DictionaryControllerTest extends TestCase
             ->assertJsonPath('items.0.repeatCount', 2)
             ->assertJsonPath('items.0.successfulRepeatCount', 1)
             ->assertJsonPath('items.0.failedRepeatCount', 1);
+    }
+
+    public function test_dictionary_returns_active_repetition_flag_for_current_user(): void
+    {
+        $user = $this->userWithFirstGradeYear(now()->year - 5);
+        $otherUser = $this->userWithFirstGradeYear(now()->year - 5);
+        $activeWord = $this->createWord('активное', 'active', 1);
+        $inactiveWord = $this->createWord('неактивное', 'inactive', 1);
+
+        UserWordRepetition::query()->create([
+            'user_id' => $user->id,
+            'word_id' => $activeWord->id,
+            'is_active' => true,
+        ]);
+        UserWordRepetition::query()->create([
+            'user_id' => $user->id,
+            'word_id' => $inactiveWord->id,
+            'is_active' => false,
+        ]);
+        UserWordRepetition::query()->create([
+            'user_id' => $otherUser->id,
+            'word_id' => $inactiveWord->id,
+            'is_active' => true,
+        ]);
+
+        $response = $this->withToken($this->accessToken($user))
+            ->getJson('/api/v1/dictionary')
+            ->assertOk();
+
+        $items = collect($response->json('items'))->keyBy('id');
+
+        $this->assertTrue($items[$activeWord->id]['is_active']);
+        $this->assertFalse($items[$inactiveWord->id]['is_active']);
     }
 
     public function test_search_treats_like_wildcards_as_plain_text(): void
@@ -170,5 +192,24 @@ class DictionaryControllerTest extends TestCase
     private function accessToken(User $user): string
     {
         return app(AuthTokenService::class)->issue($user)['accessToken'];
+    }
+
+    private function createResult(
+        Exercise $exercise,
+        Word $word,
+        int $errorsCount,
+    ): ExerciseItemResult {
+        $item = $exercise->items()->firstOrCreate([
+            'word_id' => $word->id,
+        ]);
+        $complete = $exercise->completions()->create();
+
+        return $complete->itemResults()->create([
+            'exercise_item_id' => $item->id,
+            'errors_count' => $errorsCount,
+            'hints_count' => 0,
+            'lang_id' => LangCode::en->value,
+            'variants' => ['home'],
+        ]);
     }
 }

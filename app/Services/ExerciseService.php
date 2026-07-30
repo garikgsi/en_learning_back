@@ -6,7 +6,6 @@ use App\Enums\ExerciseTypeCode;
 use App\Models\Exercise;
 use App\Models\ExerciseType;
 use App\Models\User;
-use App\Models\Word;
 use Carbon\CarbonInterface;
 use DomainException;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +13,10 @@ use InvalidArgumentException;
 
 class ExerciseService
 {
+    public function __construct(
+        private readonly LeastRepeatedWordsService $leastRepeatedWordsService,
+    ) {}
+
     public function create(
         ExerciseType|ExerciseTypeCode $type,
         User $user,
@@ -32,14 +35,44 @@ class ExerciseService
             $type = ExerciseType::forCode($type);
         }
 
-        return DB::transaction(function () use ($type, $user, $dueDate, $wordsCount): Exercise {
-            $words = Word::query()
-                ->where('grade', '<=', $user->grade)
-                ->whereNot(fn($query) => $query->whereLike('words.ru', '% %')->orWhereLike('words.en', '% %'))
-                ->inRandomOrder()
-                ->limit($wordsCount)
-                ->get(['id']);
+        return DB::transaction(
+            function () use (
+                $dueDate,
+                $type,
+                $user,
+                $wordsCount,
+            ): Exercise {
+                $words = $this->leastRepeatedWordsService->get(
+                    $user->id,
+                    $wordsCount,
+                );
 
+                return $this->createWithWords(
+                    $type,
+                    $user,
+                    $dueDate,
+                    array_map(fn ($word): int => $word->id, $words),
+                );
+            },
+        );
+    }
+
+    /**
+     * @param  array<int, int>  $wordIds
+     */
+    public function createWithWords(
+        ExerciseType|ExerciseTypeCode $type,
+        User $user,
+        CarbonInterface $dueDate,
+        array $wordIds,
+    ): Exercise {
+        if ($type instanceof ExerciseTypeCode) {
+            $type = ExerciseType::forCode($type);
+        }
+
+        $wordIds = array_values(array_unique($wordIds));
+
+        return DB::transaction(function () use ($type, $user, $dueDate, $wordIds): Exercise {
             $exercise = Exercise::query()->create([
                 'user_id' => $user->id,
                 'type_id' => $type->id,
@@ -47,9 +80,10 @@ class ExerciseService
             ]);
 
             $exercise->items()->createMany(
-                $words->map(fn (Word $word): array => [
-                    'word_id' => $word->id,
-                ])->all(),
+                array_map(
+                    fn (int $wordId): array => ['word_id' => $wordId],
+                    $wordIds,
+                ),
             );
 
             return $exercise->load(['type', 'items.word']);

@@ -32,14 +32,31 @@ class DictionaryController extends Controller
 
         $query = Word::query()
             ->where('grade', '<=', $availableGrade)
+            ->withExists([
+                'userRepetitions as is_active' => fn ($query) => $query
+                    ->where('user_id', $user->id)
+                    ->where('is_active', true),
+            ])
             ->withCount([
-                'repeats as repeat_count' => fn ($query) => $query
-                    ->where('user_id', $user->id),
-                'repeats as successful_repeat_count' => fn ($query) => $query
-                    ->where('user_id', $user->id)
+                'exerciseItemResults as repeat_count' => fn ($query) => $query
+                    ->whereHas(
+                        'complete.exercise',
+                        fn ($query) => $query
+                            ->where('user_id', $user->id),
+                    ),
+                'exerciseItemResults as successful_repeat_count' => fn ($query) => $query
+                    ->whereHas(
+                        'complete.exercise',
+                        fn ($query) => $query
+                            ->where('user_id', $user->id),
+                    )
                     ->where('errors_count', 0),
-                'repeats as failed_repeat_count' => fn ($query) => $query
-                    ->where('user_id', $user->id)
+                'exerciseItemResults as failed_repeat_count' => fn ($query) => $query
+                    ->whereHas(
+                        'complete.exercise',
+                        fn ($query) => $query
+                            ->where('user_id', $user->id),
+                    )
                     ->where('errors_count', '>', 0),
             ]);
 

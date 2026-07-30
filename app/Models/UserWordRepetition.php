@@ -6,9 +6,11 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['word_id', 'user_id', 'exercise_id', 'errors_count', 'hints_count'])]
-class WordRepeat extends Model
+#[Fillable(['word_id', 'user_id', 'is_active'])]
+class UserWordRepetition extends Model
 {
+    protected $table = 'user_word_repetition';
+
     /**
      * @return BelongsTo<Word, $this>
      */
@@ -26,21 +28,12 @@ class WordRepeat extends Model
     }
 
     /**
-     * @return BelongsTo<Exercise, $this>
-     */
-    public function exercise(): BelongsTo
-    {
-        return $this->belongsTo(Exercise::class);
-    }
-
-    /**
      * @return array<string, string>
      */
     protected function casts(): array
     {
         return [
-            'errors_count' => 'integer',
-            'hints_count' => 'integer',
+            'is_active' => 'boolean',
         ];
     }
 }

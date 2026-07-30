@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             WordsSeeder::class,
             ExerciseTypesSeeder::class,
+            LangSeeder::class,
         ]);
 
         // User::factory(10)->create();

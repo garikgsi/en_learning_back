@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property-read int $items_count
+ */
 #[Fillable(['user_id', 'type_id', 'dueDate'])]
 class Exercise extends Model
 {
@@ -37,11 +40,11 @@ class Exercise extends Model
     }
 
     /**
-     * @return HasMany<WordRepeat, $this>
+     * @return HasMany<ExerciseComplete, $this>
      */
-    public function wordRepeats(): HasMany
+    public function completions(): HasMany
     {
-        return $this->hasMany(WordRepeat::class);
+        return $this->hasMany(ExerciseComplete::class);
     }
 
     /**

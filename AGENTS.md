@@ -10,3 +10,5 @@
   HTTP Client files.
 - Never configure cascading deletes for database foreign keys. Deleting a
   referenced parent row must be rejected while related rows exist.
+- Document every computed Eloquent model property in the model PHPDoc using
+  `@property-read` so it is available in IDE autocomplete.

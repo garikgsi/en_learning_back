@@ -13,3 +13,9 @@ Schedule::command('exercises:create-daily')
     ->days([1, 2, 3, 4])
     ->withoutOverlapping()
     ->onOneServer();
+
+Schedule::command('exercises:create-weekly')
+    ->fridays()
+    ->at('00:00')
+    ->withoutOverlapping()
+    ->onOneServer();

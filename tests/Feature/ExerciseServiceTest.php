@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\ExerciseTypeCode;
 use App\Models\ExerciseType;
 use App\Models\User;
+use App\Models\UserWordRepetition;
 use App\Models\Word;
 use App\Services\ExerciseService;
 use Database\Seeders\ExerciseTypesSeeder;
@@ -28,8 +29,8 @@ class ExerciseServiceTest extends TestCase
 
         foreach (range(1, 20) as $number) {
             Word::query()->create([
-                'ru' => "слово {$number}",
-                'en' => "word {$number}",
+                'ru' => "слово{$number}",
+                'en' => "word{$number}",
                 'grade' => 3,
             ]);
         }
@@ -64,8 +65,8 @@ class ExerciseServiceTest extends TestCase
 
         foreach (range(1, 5) as $number) {
             Word::query()->create([
-                'ru' => "слово {$number}",
-                'en' => "word {$number}",
+                'ru' => "слово{$number}",
+                'en' => "word{$number}",
                 'grade' => 1,
             ]);
         }
@@ -80,5 +81,79 @@ class ExerciseServiceTest extends TestCase
         $this->assertCount(3, $exercise->items);
         $this->assertSame(ExerciseTypeCode::daily->value, $exercise->type->id);
         $this->assertSame(ExerciseTypeCode::daily->name, $exercise->type->name);
+    }
+
+    public function test_it_excludes_phrases_in_either_language(): void
+    {
+        $user = User::factory()->create();
+        $user->info()->create([
+            'first_grade_year' => now()->year - 1,
+        ]);
+        $this->seed(ExerciseTypesSeeder::class);
+
+        $word = Word::query()->create([
+            'ru' => 'дом',
+            'en' => 'home',
+            'grade' => 1,
+        ]);
+        Word::query()->create([
+            'ru' => 'мой дом',
+            'en' => 'home',
+            'grade' => 1,
+        ]);
+        Word::query()->create([
+            'ru' => 'школа',
+            'en' => 'my school',
+            'grade' => 1,
+        ]);
+
+        $exercise = app(ExerciseService::class)->create(
+            ExerciseTypeCode::daily,
+            $user,
+            now()->addDay(),
+        );
+
+        $this->assertSame(
+            [$word->id],
+            $exercise->items->pluck('word_id')->all(),
+        );
+    }
+
+    public function test_it_prioritizes_any_user_selected_word_without_deactivating_it(): void
+    {
+        $user = User::factory()->create();
+        $user->info()->create([
+            'first_grade_year' => now()->year - 1,
+        ]);
+        $this->seed(ExerciseTypesSeeder::class);
+
+        Word::query()->create([
+            'ru' => 'обычное',
+            'en' => 'regular',
+            'grade' => 1,
+        ]);
+        $selectedPhrase = Word::query()->create([
+            'ru' => 'сложная выбранная фраза',
+            'en' => 'hard selected phrase',
+            'grade' => 99,
+        ]);
+        $repetition = UserWordRepetition::query()->create([
+            'user_id' => $user->id,
+            'word_id' => $selectedPhrase->id,
+            'is_active' => true,
+        ]);
+
+        $exercise = app(ExerciseService::class)->create(
+            ExerciseTypeCode::daily,
+            $user,
+            now()->addDay(),
+            1,
+        );
+
+        $this->assertSame(
+            [$selectedPhrase->id],
+            $exercise->items->pluck('word_id')->all(),
+        );
+        $this->assertTrue($repetition->refresh()->is_active);
     }
 }

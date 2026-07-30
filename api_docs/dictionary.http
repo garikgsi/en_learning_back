@@ -6,3 +6,14 @@
 GET {{baseUrl}}/api/v1/dictionary?search=дом&page=1&perPage=30
 Accept: application/json
 Authorization: Bearer {{accessToken}}
+
+### Add a word to the user's repetition list
+# @name addWordToRepetition
+POST {{baseUrl}}/api/v1/repetition-list/words
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "word_id": 42
+}
