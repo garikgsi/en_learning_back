@@ -4,5 +4,6 @@
 .phpunit.cache
 .vscode
 node_modules
+public/storage
 storage/logs/*
 vendor
