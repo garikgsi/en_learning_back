@@ -38,7 +38,7 @@ class ExerciseControllerTest extends TestCase
             ->assertJsonPath('items.0.type.id', $type->id);
     }
 
-    public function test_it_returns_only_exercises_due_today(): void
+    public function test_it_returns_only_uncompleted_exercises_due_today(): void
     {
         $now = CarbonImmutable::parse('2026-07-29T12:00:00Z');
         $this->travelTo($now);
@@ -52,13 +52,14 @@ class ExerciseControllerTest extends TestCase
         $this->createExercise($user, $type, $now->subDay());
         $this->createExercise($user, $type, $now->addDay());
         $this->createExercise($otherUser, $type, $now);
+        $first->completions()->create();
+        $first->completions()->create();
 
         $this->withToken($this->accessToken($user))
             ->getJson('/api/v1/exercises/current')
             ->assertOk()
-            ->assertJsonCount(2, 'items')
-            ->assertJsonPath('items.0.id', $first->id)
-            ->assertJsonPath('items.1.id', $second->id);
+            ->assertJsonCount(1, 'items')
+            ->assertJsonPath('items.0.id', $second->id);
     }
 
     public function test_period_requires_both_dates_in_valid_order(): void
@@ -75,6 +76,27 @@ class ExerciseControllerTest extends TestCase
             ->assertJsonValidationErrors('dateTo');
     }
 
+    public function test_user_can_get_own_selected_exercise_only(): void
+    {
+        $user = User::factory()->create();
+        $type = $this->createType();
+        $exercise = $this->createExercise($user, $type, now());
+        $otherExercise = $this->createExercise(
+            User::factory()->create(),
+            $type,
+            now(),
+        );
+
+        $this->withToken($this->accessToken($user))
+            ->getJson("/api/v1/exercises/{$exercise->id}")
+            ->assertOk()
+            ->assertJsonPath('item.id', $exercise->id)
+            ->assertJsonPath('item.type.id', $type->id);
+
+        $this->getJson("/api/v1/exercises/{$otherExercise->id}")
+            ->assertNotFound();
+    }
+
     public function test_exercise_endpoints_require_authentication(): void
     {
         $this->getJson(
@@ -84,6 +106,9 @@ class ExerciseControllerTest extends TestCase
         )->assertUnauthorized();
 
         $this->getJson('/api/v1/exercises/current')
+            ->assertUnauthorized();
+
+        $this->getJson('/api/v1/exercises/1')
             ->assertUnauthorized();
     }
 

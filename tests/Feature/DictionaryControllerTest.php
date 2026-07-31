@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ExerciseTypeCode;
 use App\Enums\LangCode;
 use App\Models\Exercise;
 use App\Models\ExerciseItemResult;
@@ -80,16 +81,21 @@ class DictionaryControllerTest extends TestCase
         $word = $this->createWord('дом', 'home', 1);
         $exercise = $this->createExercise($user);
         $otherExercise = $this->createExercise($otherUser);
+        $userExercise = $this->createExercise(
+            $user,
+            ExerciseType::forCode(ExerciseTypeCode::user),
+        );
 
         $this->createResult($exercise, $word, 0);
         $this->createResult($exercise, $word, 2);
         $this->createResult($otherExercise, $word, 0);
+        $this->createResult($userExercise, $word, 0);
 
         $this->withToken($this->accessToken($user))
             ->getJson('/api/v1/dictionary')
             ->assertOk()
-            ->assertJsonPath('items.0.repeatCount', 2)
-            ->assertJsonPath('items.0.successfulRepeatCount', 1)
+            ->assertJsonPath('items.0.repeatCount', 3)
+            ->assertJsonPath('items.0.successfulRepeatCount', 2)
             ->assertJsonPath('items.0.failedRepeatCount', 1);
     }
 
@@ -175,9 +181,11 @@ class DictionaryControllerTest extends TestCase
         ]);
     }
 
-    private function createExercise(User $user): Exercise
-    {
-        $type = ExerciseType::query()->firstOrCreate(
+    private function createExercise(
+        User $user,
+        ?ExerciseType $type = null,
+    ): Exercise {
+        $type ??= ExerciseType::query()->firstOrCreate(
             ['name' => 'translation'],
             ['title' => 'Translate the word'],
         );

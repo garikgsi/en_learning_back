@@ -4,15 +4,32 @@ GET {{baseUrl}}/api/v1/exercises?dateFrom=2026-07-29T00:00:00%2B03:00&dateTo=202
 Accept: application/json
 Authorization: Bearer {{accessToken}}
 
-### Get exercises due today
+### Create a user exercise for the current date
+# @name createUserExercise
+POST {{baseUrl}}/api/v1/exercises
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+### Get uncompleted exercises due today
 # @name getCurrentExercises
 GET {{baseUrl}}/api/v1/exercises/current
 Accept: application/json
 Authorization: Bearer {{accessToken}}
 
-### Get exercise statistics for an inclusive period
+### Get calendar statistics plus current week/month charts for all users
+# Calendar items use the requested inclusive period and current user.
+# charts.week and charts.month contain every user with learnedWords,
+# wordsToRepeat and completedExercises, including user-created exercises.
+# A word error percentage is the share of its checked directions with errors.
+# attentionWords contains current-user words above 50% errors this month.
 # @name getExerciseStatistics
 GET {{baseUrl}}/api/v1/exercises/statistics?dateFrom=2026-07-01T00:00:00%2B03:00&dateTo=2026-07-31T23:59:59%2B03:00
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+### Get a selected exercise (completed user exercises return 409)
+# @name getSelectedExercise
+GET {{baseUrl}}/api/v1/exercises/1
 Accept: application/json
 Authorization: Bearer {{accessToken}}
 

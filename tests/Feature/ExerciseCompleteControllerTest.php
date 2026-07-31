@@ -146,6 +146,51 @@ class ExerciseCompleteControllerTest extends TestCase
             ]);
     }
 
+    public function test_user_exercise_can_only_be_completed_once_and_counts_as_repetition(): void
+    {
+        $this->seed([ExerciseTypesSeeder::class, LangSeeder::class]);
+
+        $user = User::factory()->create();
+        $exercise = Exercise::query()->create([
+            'user_id' => $user->id,
+            'type_id' => ExerciseTypeCode::user->value,
+            'dueDate' => now(),
+        ]);
+        $word = $this->createWord();
+        $item = $exercise->items()->create(['word_id' => $word->id]);
+        $repetition = UserWordRepetition::query()->create([
+            'user_id' => $user->id,
+            'word_id' => $word->id,
+            'is_active' => true,
+        ]);
+        $payload = [
+            'exercise_id' => $exercise->id,
+            'exercise_items_result' => [[
+                'exercise_item_id' => $item->id,
+                'errors_count' => 0,
+                'hints_count' => 0,
+                'lang_id' => LangCode::en->value,
+                'variants' => ['cat'],
+            ]],
+        ];
+
+        $this->withToken($this->accessToken($user))
+            ->postJson('/api/v1/exercises/complete', $payload)
+            ->assertCreated();
+
+        $this->assertFalse($repetition->refresh()->is_active);
+
+        $this->postJson('/api/v1/exercises/complete', $payload)
+            ->assertConflict()
+            ->assertJsonPath('code', 'USER_EXERCISE_ALREADY_COMPLETED');
+
+        $this->getJson("/api/v1/exercises/{$exercise->id}")
+            ->assertConflict()
+            ->assertJsonPath('code', 'USER_EXERCISE_ALREADY_COMPLETED');
+
+        $this->assertDatabaseCount('exercise_complete', 1);
+    }
+
     private function createExercise(User $user): Exercise
     {
         return Exercise::query()->create([

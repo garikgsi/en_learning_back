@@ -29,11 +29,14 @@ Route::prefix('v1')->group(function (): void {
             UserWordRepetitionController::class,
         );
         Route::get('/exercises', [ExerciseController::class, 'index']);
+        Route::post('/exercises', [ExerciseController::class, 'store']);
         Route::get('/exercises/current', [ExerciseController::class, 'current']);
         Route::get(
             '/exercises/statistics',
             [ExerciseController::class, 'statistics'],
         );
+        Route::get('/exercises/{exercise}', [ExerciseController::class, 'show'])
+            ->whereNumber('exercise');
         Route::post('/exercises/complete', [ExerciseController::class, 'complete']);
     });
 });

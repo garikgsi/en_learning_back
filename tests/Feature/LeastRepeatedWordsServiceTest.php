@@ -37,11 +37,17 @@ class LeastRepeatedWordsServiceTest extends TestCase
         $this->addResults($user, $repeatedOnce, 1);
         $this->addResults($user, $repeatedTwice, 2);
         $this->addResults($otherUser, $neverRepeated, 2);
+        $this->addResults(
+            $user,
+            $neverRepeated,
+            3,
+            ExerciseTypeCode::user,
+        );
 
         $words = app(LeastRepeatedWordsService::class)->get($user->id, 2);
 
         $this->assertSame(
-            [$neverRepeated->id, $repeatedOnce->id],
+            [$repeatedOnce->id, $repeatedTwice->id],
             array_map(fn (Word $word): int => $word->id, $words),
         );
     }
@@ -69,10 +75,11 @@ class LeastRepeatedWordsServiceTest extends TestCase
         User $user,
         Word $word,
         int $count,
+        ExerciseTypeCode $type = ExerciseTypeCode::daily,
     ): void {
         $exercise = Exercise::query()->create([
             'user_id' => $user->id,
-            'type_id' => ExerciseTypeCode::daily->value,
+            'type_id' => $type->value,
             'dueDate' => now(),
         ]);
         $item = $exercise->items()->create(['word_id' => $word->id]);
