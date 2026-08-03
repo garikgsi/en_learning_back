@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\ExerciseTypeCode;
+use App\Exceptions\NoWordsAvailableException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\ExerciseCompleteRequest;
 use App\Http\Requests\Api\V1\ExerciseIndexRequest;
@@ -34,11 +35,18 @@ class ExerciseController extends Controller
             ], 409);
         }
 
-        $exercise = $exerciseService->create(
-            ExerciseTypeCode::user,
-            $user,
-            today(),
-        );
+        try {
+            $exercise = $exerciseService->create(
+                ExerciseTypeCode::user,
+                $user,
+                today(),
+            );
+        } catch (NoWordsAvailableException) {
+            return response()->json([
+                'message' => 'Нет слов в словаре',
+                'code' => 'DICTIONARY_EMPTY',
+            ], 409);
+        }
 
         return response()->json([
             'item' => (new ExerciseResource($exercise))->resolve($request),

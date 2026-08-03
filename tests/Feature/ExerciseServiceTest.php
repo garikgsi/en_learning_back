@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\ExerciseTypeCode;
+use App\Exceptions\NoWordsAvailableException;
 use App\Models\ExerciseType;
 use App\Models\User;
 use App\Models\UserWordRepetition;
@@ -15,6 +16,28 @@ use Tests\TestCase;
 class ExerciseServiceTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_it_does_not_create_an_exercise_without_words(): void
+    {
+        $user = User::factory()->create();
+        $user->info()->create([
+            'first_grade_year' => now()->year - 1,
+        ]);
+        $this->seed(ExerciseTypesSeeder::class);
+
+        $this->expectException(NoWordsAvailableException::class);
+        $this->expectExceptionMessage('Нет слов в словаре');
+
+        try {
+            app(ExerciseService::class)->create(
+                ExerciseTypeCode::daily,
+                $user,
+                now(),
+            );
+        } finally {
+            $this->assertDatabaseCount('exercise', 0);
+        }
+    }
 
     public function test_it_creates_exercise_with_fifteen_random_available_words_by_default(): void
     {

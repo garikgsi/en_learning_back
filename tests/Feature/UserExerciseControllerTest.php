@@ -63,6 +63,20 @@ class UserExerciseControllerTest extends TestCase
         $this->assertDatabaseCount('exercise', 0);
     }
 
+    public function test_exercise_is_not_created_when_dictionary_has_no_words(): void
+    {
+        $this->seed(ExerciseTypesSeeder::class);
+        $user = $this->userWithGrade(3);
+
+        $this->withToken($this->accessToken($user))
+            ->postJson('/api/v1/exercises')
+            ->assertConflict()
+            ->assertJsonPath('message', 'Нет слов в словаре')
+            ->assertJsonPath('code', 'DICTIONARY_EMPTY');
+
+        $this->assertDatabaseCount('exercise', 0);
+    }
+
     public function test_creation_requires_authentication(): void
     {
         $this->postJson('/api/v1/exercises')
