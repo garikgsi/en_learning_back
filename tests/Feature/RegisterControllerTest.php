@@ -15,7 +15,7 @@ class RegisterControllerTest extends TestCase
     {
         $response = $this->postJson('/api/v1/auth/register', [
             'name' => '  Ivan  ',
-            'phone' => '8 (999) 123-45-67',
+            'phone' => '8 (926) 226-03-86',
             'pinCode' => '1234',
             'firstGradeYear' => 2010,
         ]);
@@ -23,7 +23,7 @@ class RegisterControllerTest extends TestCase
         $response
             ->assertCreated()
             ->assertJsonPath('user.name', 'Ivan')
-            ->assertJsonPath('user.phone', '+79991234567')
+            ->assertJsonPath('user.phone', '+79262260386')
             ->assertJsonStructure([
                 'user',
                 'accessToken',
@@ -41,6 +41,20 @@ class RegisterControllerTest extends TestCase
     }
 
     public function test_registration_rejects_duplicate_phone(): void
+    {
+        User::factory()->create(['phone' => '+79991234567']);
+
+        $this->postJson('/api/v1/auth/register', [
+            'name' => 'Ivan',
+            'phone' => '+79991234567',
+            'pinCode' => '1234',
+            'firstGradeYear' => 2010,
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('phone');
+    }
+
+    public function test_registration_rejects_phone_not_in_list(): void
     {
         User::factory()->create(['phone' => '+79991234567']);
 
