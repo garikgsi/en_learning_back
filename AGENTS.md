@@ -12,3 +12,13 @@
   referenced parent row must be rejected while related rows exist.
 - Document every computed Eloquent model property in the model PHPDoc using
   `@property-read` so it is available in IDE autocomplete.
+
+## Testing and formatting
+
+- Do not run Laravel tests, Artisan commands, Composer scripts, or Pint with
+  the host PHP: its version is older than the version required by the project.
+- Run backend checks directly in the existing `app` container:
+  `docker compose exec -T app php artisan test` for tests and
+  `docker compose exec -T app vendor/bin/pint --test` for formatting checks.
+- For targeted checks, append test paths or Pint file paths to those container
+  commands. Check `docker compose ps` only when a container command fails.

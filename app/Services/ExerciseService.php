@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ExerciseTypeCode;
+use App\Exceptions\NoWordsAvailableException;
 use App\Models\Exercise;
 use App\Models\ExerciseType;
 use App\Models\User;
@@ -71,6 +72,10 @@ class ExerciseService
         }
 
         $wordIds = array_values(array_unique($wordIds));
+
+        if ($wordIds === []) {
+            throw new NoWordsAvailableException;
+        }
 
         return DB::transaction(function () use ($type, $user, $dueDate, $wordIds): Exercise {
             $exercise = Exercise::query()->create([

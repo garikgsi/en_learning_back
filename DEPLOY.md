@@ -26,7 +26,7 @@ cp .env.example .env
 chmod 600 .env
 ```
 
-Минимально измените следующие значения:
+Минимально измените следующие значения:do
 
 ```dotenv
 APP_ENV=production

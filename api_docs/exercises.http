@@ -5,6 +5,8 @@ Accept: application/json
 Authorization: Bearer {{accessToken}}
 
 ### Create a user exercise for the current date
+# Returns 409 DICTIONARY_EMPTY with "Нет слов в словаре" when no words are
+# available; an exercise is not created in that case.
 # @name createUserExercise
 POST {{baseUrl}}/api/v1/exercises
 Accept: application/json

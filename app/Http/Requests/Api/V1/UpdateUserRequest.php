@@ -30,7 +30,7 @@ class UpdateUserRequest extends FormRequest
                 'file',
                 'image',
                 'mimes:jpg,jpeg,png,webp',
-                'max:2048',
+                'max:10240',
             ],
         ];
     }
