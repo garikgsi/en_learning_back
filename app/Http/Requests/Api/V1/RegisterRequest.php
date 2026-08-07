@@ -34,6 +34,13 @@ class RegisterRequest extends FormRequest
                 'min:1900',
                 'max:'.now()->year,
             ],
+            'avatar' => [
+                'nullable',
+                'file',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:10240',
+            ],
         ];
     }
 
