@@ -64,7 +64,7 @@ services:
     ports:
       - "${APP_BIND_ADDRESS:-127.0.0.1}:${APP_PORT:-8088}:80"
     volumes:
-      - app_storage:/var/www/html/storage:ro
+      - ./storage:/var/www/html/storage:ro
     depends_on:
       app:
         condition: service_healthy
@@ -104,5 +104,4 @@ networks:
     driver: bridge
 
 volumes:
-  app_storage:
   postgres_data:
