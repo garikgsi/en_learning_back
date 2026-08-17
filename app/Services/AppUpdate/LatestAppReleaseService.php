@@ -93,6 +93,8 @@ class LatestAppReleaseService
             return null;
         }
 
+        $latestRelease = null;
+
         foreach ($releases as $release) {
             if (! is_array($release) || ! $this->isReleaseAllowed($release)) {
                 continue;
@@ -113,12 +115,18 @@ class LatestAppReleaseService
                 ->json();
             $validated = $this->validateManifest($release, $manifest);
 
-            if ($validated !== null) {
-                return $validated;
+            if (
+                $validated !== null
+                && (
+                    $latestRelease === null
+                    || $validated['versionCode'] > $latestRelease['versionCode']
+                )
+            ) {
+                $latestRelease = $validated;
             }
         }
 
-        return null;
+        return $latestRelease;
     }
 
     private function githubRequest(): PendingRequest

@@ -64,6 +64,31 @@ class AppUpdateControllerTest extends TestCase
         Http::assertSentCount(2);
     }
 
+    public function test_it_selects_the_highest_version_code_regardless_of_github_order(): void
+    {
+        Http::fake([
+            'api.github.com/repos/owner/app/releases*' => Http::response([
+                $this->githubRelease(9),
+                $this->githubRelease(8),
+                $this->githubRelease(11),
+                $this->githubRelease(10),
+            ]),
+            $this->manifestUrl(8) => Http::response($this->manifest(8)),
+            $this->manifestUrl(9) => Http::response($this->manifest(9)),
+            $this->manifestUrl(10) => Http::response($this->manifest(10)),
+            $this->manifestUrl(11) => Http::response($this->manifest(11)),
+        ]);
+        $user = User::factory()->create();
+
+        $this->withToken($this->accessToken($user))
+            ->getJson('/api/v1/app-updates/latest')
+            ->assertOk()
+            ->assertJsonPath('data.versionCode', 11)
+            ->assertJsonPath('data.versionName', '0.1.0-rc.11');
+
+        Http::assertSentCount(5);
+    }
+
     public function test_manual_check_refreshes_the_release_and_is_rate_limited(): void
     {
         $currentVersionCode = 9;
