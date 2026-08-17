@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\Auth\LoginController;
 use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\RefreshTokenController;
 use App\Http\Controllers\Api\V1\Auth\RegisterController;
+use App\Http\Controllers\Api\V1\AppUpdateController;
 use App\Http\Controllers\Api\V1\DictionaryController;
 use App\Http\Controllers\Api\V1\ExerciseController;
 use App\Http\Controllers\Api\V1\UpdatePinController;
@@ -19,6 +20,7 @@ Route::prefix('v1')->group(function (): void {
     });
 
     Route::middleware('access.token')->group(function (): void {
+        Route::get('/app-updates/latest', AppUpdateController::class);
         Route::post('/auth/logout', LogoutController::class);
         Route::get('/users/me', [UserController::class, 'show']);
         Route::patch('/users/me', [UserController::class, 'update']);

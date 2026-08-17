@@ -1,0 +1,5 @@
+### Get the latest Android APK release
+# @name getLatestAppUpdate
+GET {{baseUrl}}/api/v1/app-updates/latest
+Accept: application/json
+Authorization: Bearer {{accessToken}}
