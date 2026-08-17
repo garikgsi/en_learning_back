@@ -25,7 +25,7 @@ class RegisterRequest extends FormRequest
                 'string',
                 'regex:/^\+7\d{10}$/',
                 Rule::unique('users', 'phone'),
-                Rule::in(['+79031611479', '+79262260386', '+79917036701', '+9252463899']),
+                Rule::in(['+79031611479', '+79262260386', '+79917036701', '+79252463899']),
             ],
             'pinCode' => ['required', 'string', 'regex:/^\d{4}$/'],
             'firstGradeYear' => [
