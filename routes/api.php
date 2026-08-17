@@ -1,10 +1,10 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AppUpdateController;
 use App\Http\Controllers\Api\V1\Auth\LoginController;
 use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\RefreshTokenController;
 use App\Http\Controllers\Api\V1\Auth\RegisterController;
-use App\Http\Controllers\Api\V1\AppUpdateController;
 use App\Http\Controllers\Api\V1\DictionaryController;
 use App\Http\Controllers\Api\V1\ExerciseController;
 use App\Http\Controllers\Api\V1\UpdatePinController;
