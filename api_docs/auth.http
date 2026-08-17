@@ -19,6 +19,7 @@ Content-Type: application/json
 ### Log in
 # Three failed attempts per hour are allowed for one user.
 # The limiter key does not contain the client IP address.
+# Token lifetime fields expiresIn and refreshExpiresIn are returned in seconds.
 # @name login
 POST {{baseUrl}}/api/v1/auth/login
 Accept: application/json

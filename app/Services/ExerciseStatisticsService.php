@@ -29,7 +29,7 @@ class ExerciseStatisticsService
             ->whereHas(
                 'complete',
                 fn ($query) => $query
-                    ->whereBetween('created_at', [
+                    ->whereBetween('completed_at', [
                         $now->startOfMonth(),
                         $now->endOfDay(),
                     ])
@@ -114,7 +114,7 @@ class ExerciseStatisticsService
             ->orderBy('id')
             ->get(['id', 'name']);
         $completions = ExerciseComplete::query()
-            ->whereBetween('created_at', [$queryDateFrom, $dateTo])
+            ->whereBetween('completed_at', [$queryDateFrom, $dateTo])
             ->with([
                 'exercise:id,user_id,type_id',
                 'itemResults.exerciseItem:id,word_id',
@@ -124,13 +124,13 @@ class ExerciseStatisticsService
         return [
             'week' => $this->chartPeriod(
                 $users,
-                $completions->where('created_at', '>=', $weekDateFrom),
+                $completions->where('completed_at', '>=', $weekDateFrom),
                 $weekDateFrom,
                 $dateTo,
             ),
             'month' => $this->chartPeriod(
                 $users,
-                $completions->where('created_at', '>=', $monthDateFrom),
+                $completions->where('completed_at', '>=', $monthDateFrom),
                 $monthDateFrom,
                 $dateTo,
             ),
@@ -168,7 +168,7 @@ class ExerciseStatisticsService
             ]);
 
         $completions = ExerciseComplete::query()
-            ->whereBetween('created_at', [$dateFrom, $dateTo])
+            ->whereBetween('completed_at', [$dateFrom, $dateTo])
             ->whereHas(
                 'exercise',
                 fn ($query) => $query->where('user_id', $user->id),
@@ -196,7 +196,7 @@ class ExerciseStatisticsService
                     'exerciseId' => $completion->exercise_id,
                     'completionId' => $completion->id,
                     'status' => 'completed',
-                    'date' => $completion->created_at->toISOString(),
+                    'date' => $completion->completed_at->toISOString(),
                     'type' => [
                         'id' => $completion->exercise->type->id,
                         'name' => $completion->exercise->type->name,

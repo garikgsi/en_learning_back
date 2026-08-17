@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\UserWordRepetition;
 use App\Models\Word;
 use App\Services\Auth\AuthTokenService;
+use Carbon\CarbonImmutable;
 use Database\Seeders\LangSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -160,6 +161,103 @@ class DictionaryControllerTest extends TestCase
     {
         $this->getJson('/api/v1/dictionary')
             ->assertUnauthorized();
+    }
+
+    public function test_dictionary_sync_returns_all_available_words_and_latest_creation_date(): void
+    {
+        $user = $this->userWithFirstGradeYear(now()->year - 2);
+        $olderWord = $this->createWord('дом', 'home', 1);
+        $olderWord->created_at = CarbonImmutable::parse('2026-08-13T10:00:00Z');
+        $olderWord->save();
+        $newerWord = $this->createWord('университет', 'university', 10);
+        $newerWord->created_at = CarbonImmutable::parse('2026-08-14T11:30:00Z');
+        $newerWord->save();
+
+        $this->withToken($this->accessToken($user))
+            ->getJson('/api/v1/dictionary/sync')
+            ->assertOk()
+            ->assertJsonPath('availableGrade', 2)
+            ->assertJsonPath('latestCreatedAt', '2026-08-13T10:00:00.000000Z')
+            ->assertJsonPath('isFullSync', true)
+            ->assertJsonPath('page', 1)
+            ->assertJsonPath('perPage', 500)
+            ->assertJsonPath('lastPage', 1)
+            ->assertJsonCount(1, 'items')
+            ->assertJsonPath('items.0.id', $olderWord->id)
+            ->assertJsonPath('items.0.createdAt', '2026-08-13T10:00:00.000000Z');
+    }
+
+    public function test_dictionary_sync_returns_only_words_created_after_cursor(): void
+    {
+        $user = $this->userWithFirstGradeYear(now()->year - 2);
+        $olderWord = $this->createWord('дом', 'home', 1);
+        $olderWord->created_at = CarbonImmutable::parse('2026-08-13T10:00:00Z');
+        $olderWord->save();
+        $newerWord = $this->createWord('школа', 'school', 1);
+        $newerWord->created_at = CarbonImmutable::parse('2026-08-14T11:30:00Z');
+        $newerWord->save();
+
+        $this->withToken($this->accessToken($user))
+            ->getJson('/api/v1/dictionary/sync?createdAfter=2026-08-13T10:00:00Z&availableGrade=2')
+            ->assertOk()
+            ->assertJsonPath('isFullSync', false)
+            ->assertJsonCount(1, 'items')
+            ->assertJsonPath('items.0.id', $newerWord->id)
+            ->assertJsonPath('latestCreatedAt', '2026-08-14T11:30:00.000000Z');
+    }
+
+    public function test_dictionary_sync_is_full_when_users_available_grade_changes(): void
+    {
+        $user = $this->userWithFirstGradeYear(now()->year - 3);
+        $word = $this->createWord('школа', 'school', 3);
+
+        $this->withToken($this->accessToken($user))
+            ->getJson('/api/v1/dictionary/sync?createdAfter='.urlencode($word->created_at->toISOString()).'&availableGrade=2')
+            ->assertOk()
+            ->assertJsonPath('availableGrade', 3)
+            ->assertJsonPath('isFullSync', true)
+            ->assertJsonCount(1, 'items')
+            ->assertJsonPath('items.0.id', $word->id);
+    }
+
+    public function test_dictionary_sync_validates_cursor(): void
+    {
+        $user = $this->userWithFirstGradeYear(now()->year - 2);
+
+        $this->withToken($this->accessToken($user))
+            ->getJson('/api/v1/dictionary/sync?createdAfter=not-a-date')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('createdAfter');
+    }
+
+    public function test_dictionary_sync_paginates_cache_downloads(): void
+    {
+        $user = $this->userWithFirstGradeYear(now()->year - 2);
+        $first = $this->createWord('дом', 'home', 1);
+        $first->created_at = CarbonImmutable::parse('2026-08-13T10:00:00Z');
+        $first->save();
+        $second = $this->createWord('школа', 'school', 1);
+        $second->created_at = CarbonImmutable::parse('2026-08-14T10:00:00Z');
+        $second->save();
+
+        $this->withToken($this->accessToken($user))
+            ->getJson('/api/v1/dictionary/sync?page=2&perPage=1')
+            ->assertOk()
+            ->assertJsonPath('page', 2)
+            ->assertJsonPath('perPage', 1)
+            ->assertJsonPath('lastPage', 2)
+            ->assertJsonCount(1, 'items')
+            ->assertJsonPath('items.0.id', $second->id);
+    }
+
+    public function test_dictionary_sync_validates_pagination(): void
+    {
+        $user = $this->userWithFirstGradeYear(now()->year - 2);
+
+        $this->withToken($this->accessToken($user))
+            ->getJson('/api/v1/dictionary/sync?page=0&perPage=1001')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['page', 'perPage']);
     }
 
     private function userWithFirstGradeYear(int $year): User

@@ -36,6 +36,10 @@ Accept: application/json
 Authorization: Bearer {{accessToken}}
 
 ### Save exercise completion results
+# attempt_id makes retries idempotent. Repeating the same request returns 200
+# with the original completion; reusing it with a different payload returns
+# 409 IDEMPOTENCY_KEY_REUSED. completed_at must be within the last 14 days and
+# no more than 5 minutes in the future.
 # @name completeExercise
 POST {{baseUrl}}/api/v1/exercises/complete
 Accept: application/json
@@ -43,6 +47,8 @@ Content-Type: application/json
 Authorization: Bearer {{accessToken}}
 
 {
+    "attempt_id": "9346cfa4-09d4-4d99-a31d-4d60914d13b8",
+    "completed_at": "2026-08-14T10:20:00+03:00",
     "exercise_id": 1,
     "exercise_items_result": [
         {

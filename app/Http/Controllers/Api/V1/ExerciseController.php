@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\ExerciseTypeCode;
+use App\Exceptions\IdempotencyKeyReusedException;
 use App\Exceptions\NoWordsAvailableException;
+use App\Exceptions\UserExerciseAlreadyCompletedException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\ExerciseCompleteRequest;
 use App\Http\Requests\Api\V1\ExerciseIndexRequest;
@@ -64,18 +66,25 @@ class ExerciseController extends Controller
             ->where('user_id', $user->id)
             ->findOrFail($validated['exercise_id']);
 
-        if ($this->isCompletedUserExercise($exercise)) {
+        try {
+            $result = $completionService->complete(
+                $exercise,
+                $validated['exercise_items_result'],
+                $validated['attempt_id'],
+                CarbonImmutable::parse($validated['completed_at']),
+            );
+        } catch (IdempotencyKeyReusedException) {
+            return response()->json([
+                'message' => 'Идентификатор попытки уже использован для другого результата.',
+                'code' => 'IDEMPOTENCY_KEY_REUSED',
+            ], 409);
+        } catch (UserExerciseAlreadyCompletedException) {
             return $this->userExerciseAlreadyCompletedResponse();
         }
 
-        $complete = $completionService->complete(
-            $exercise,
-            $validated['exercise_items_result'],
-        );
-
-        return (new ExerciseCompleteResource($complete))
+        return (new ExerciseCompleteResource($result['completion']))
             ->response()
-            ->setStatusCode(201);
+            ->setStatusCode($result['created'] ? 201 : 200);
     }
 
     public function index(ExerciseIndexRequest $request): JsonResponse

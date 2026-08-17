@@ -18,13 +18,15 @@ class UpdateUserRequest extends FormRequest
     {
         return [
             'name' => [
+                'sometimes',
                 'required',
                 'string',
                 'min:2',
                 'max:100',
             ],
             'avatar' => [
-                'nullable',
+                'sometimes',
+                'required',
                 'file',
                 'image',
                 'mimes:jpg,jpeg,png,webp',

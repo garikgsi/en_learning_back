@@ -49,6 +49,7 @@ class ExerciseStatisticsControllerTest extends TestCase
             $completed,
             '2026-07-10T10:00:00Z',
             [3, 0],
+            '2026-08-01T10:00:00Z',
         );
         $secondCompletion = $this->createCompletion(
             $completed,
@@ -301,12 +302,15 @@ class ExerciseStatisticsControllerTest extends TestCase
         Exercise $exercise,
         string $completedAt,
         array $errorsByWord,
+        ?string $receivedAt = null,
     ): ExerciseComplete {
+        $receivedAt ??= $completedAt;
         $completion = new ExerciseComplete([
             'exercise_id' => $exercise->id,
+            'completed_at' => CarbonImmutable::parse($completedAt),
         ]);
-        $completion->created_at = CarbonImmutable::parse($completedAt);
-        $completion->updated_at = CarbonImmutable::parse($completedAt);
+        $completion->created_at = CarbonImmutable::parse($receivedAt);
+        $completion->updated_at = CarbonImmutable::parse($receivedAt);
         $completion->save();
 
         $exercise->items()
@@ -342,6 +346,7 @@ class ExerciseStatisticsControllerTest extends TestCase
     ): ExerciseComplete {
         $completion = new ExerciseComplete([
             'exercise_id' => $exercise->id,
+            'completed_at' => CarbonImmutable::parse($completedAt),
         ]);
         $completion->created_at = CarbonImmutable::parse($completedAt);
         $completion->updated_at = CarbonImmutable::parse($completedAt);

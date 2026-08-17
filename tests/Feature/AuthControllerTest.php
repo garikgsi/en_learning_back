@@ -27,6 +27,8 @@ class AuthControllerTest extends TestCase
             ->assertOk()
             ->assertJsonPath('user.id', $user->id)
             ->assertJsonPath('tokenType', 'Bearer')
+            ->assertJsonPath('expiresIn', 900)
+            ->assertJsonPath('refreshExpiresIn', 2_592_000)
             ->json('accessToken');
 
         $this->withToken($accessToken)
@@ -86,7 +88,9 @@ class AuthControllerTest extends TestCase
 
         $response = $this->postJson('/api/v1/auth/refresh', [
             'refreshToken' => $tokens['refreshToken'],
-        ])->assertOk();
+        ])
+            ->assertOk()
+            ->assertJsonPath('refreshExpiresIn', 2_592_000);
 
         $this->assertNotSame($tokens['accessToken'], $response->json('accessToken'));
         $this->assertNotSame($tokens['refreshToken'], $response->json('refreshToken'));

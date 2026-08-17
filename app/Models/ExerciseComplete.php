@@ -6,8 +6,14 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
-#[Fillable(['exercise_id'])]
+#[Fillable([
+    'exercise_id',
+    'client_attempt_id',
+    'request_hash',
+    'completed_at',
+])]
 class ExerciseComplete extends Model
 {
     protected $table = 'exercise_complete';
@@ -29,5 +35,27 @@ class ExerciseComplete extends Model
             ExerciseItemResult::class,
             'exercise_complete_id',
         );
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'completed_at' => 'immutable_datetime',
+        ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (ExerciseComplete $completion): void {
+            $completion->client_attempt_id ??= (string) Str::uuid();
+            $completion->request_hash ??= hash(
+                'sha256',
+                "internal:{$completion->client_attempt_id}",
+            );
+            $completion->completed_at ??= now();
+        });
     }
 }

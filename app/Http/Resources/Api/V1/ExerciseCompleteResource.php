@@ -15,6 +15,8 @@ class ExerciseCompleteResource extends JsonResource
         return [
             'id' => $this->id,
             'exercise_id' => $this->exercise_id,
+            'attempt_id' => $this->client_attempt_id,
+            'completed_at' => $this->completed_at,
             'exercise_items_result' => $this->itemResults->map(
                 fn ($result): array => [
                     'id' => $result->id,

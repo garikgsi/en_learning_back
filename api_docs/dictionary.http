@@ -7,6 +7,15 @@ GET {{baseUrl}}/api/v1/dictionary?search=дом&page=1&perPage=30
 Accept: application/json
 Authorization: Bearer {{accessToken}}
 
+### Synchronize a page of the dictionary cache
+# Fetch every page on the first request. Pass latestCreatedAt from the previous
+# response to receive only words created later. Search and display pagination
+# are performed by the client from its local cache after all pages are saved.
+# @name syncDictionary
+GET {{baseUrl}}/api/v1/dictionary/sync?page=1&perPage=500&createdAfter=2026-08-14T09:30:00.000Z&availableGrade=5
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
 ### Add a word to the user's repetition list
 # @name addWordToRepetition
 POST {{baseUrl}}/api/v1/repetition-list/words

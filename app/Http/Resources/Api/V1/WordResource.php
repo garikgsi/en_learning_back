@@ -17,6 +17,7 @@ class WordResource extends JsonResource
             'ru' => $this->ru,
             'en' => $this->en,
             'grade' => $this->grade,
+            'createdAt' => $this->created_at->toISOString(),
             'repeatCount' => (int) ($this->repeat_count ?? 0),
             'successfulRepeatCount' => (int) ($this->successful_repeat_count ?? 0),
             'failedRepeatCount' => (int) ($this->failed_repeat_count ?? 0),

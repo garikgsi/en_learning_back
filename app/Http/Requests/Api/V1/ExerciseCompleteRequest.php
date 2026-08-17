@@ -17,6 +17,13 @@ class ExerciseCompleteRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'attempt_id' => ['required', 'uuid'],
+            'completed_at' => [
+                'required',
+                'date',
+                'after_or_equal:'.now()->subDays(14)->toISOString(),
+                'before_or_equal:'.now()->addMinutes(5)->toISOString(),
+            ],
             'exercise_id' => ['required', 'integer', 'exists:exercise,id'],
             'exercise_items_result' => ['required', 'array'],
             'exercise_items_result.*' => ['required', 'array'],

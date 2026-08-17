@@ -9,6 +9,9 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 /**
  * @property-read bool $is_active
+ * @property-read int $repeat_count
+ * @property-read int $successful_repeat_count
+ * @property-read int $failed_repeat_count
  */
 #[Fillable(['ru', 'en', 'grade'])]
 class Word extends Model

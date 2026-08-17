@@ -12,6 +12,7 @@ use App\Services\Auth\AuthTokenService;
 use Database\Seeders\ExerciseTypesSeeder;
 use Database\Seeders\LangSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class ExerciseCompleteControllerTest extends TestCase
@@ -34,8 +35,13 @@ class ExerciseCompleteControllerTest extends TestCase
             'is_active' => true,
         ]);
 
+        $attemptId = (string) Str::uuid();
+        $completedAt = now()->subHour()->toISOString();
+
         $this->withToken($this->accessToken($user))
             ->postJson('/api/v1/exercises/complete', [
+                'attempt_id' => $attemptId,
+                'completed_at' => $completedAt,
                 'exercise_id' => $exercise->id,
                 'exercise_items_result' => [[
                     'exercise_item_id' => $item->id,
@@ -47,6 +53,7 @@ class ExerciseCompleteControllerTest extends TestCase
             ])
             ->assertCreated()
             ->assertJsonPath('data.exercise_id', $exercise->id)
+            ->assertJsonPath('data.attempt_id', $attemptId)
             ->assertJsonPath(
                 'data.exercise_items_result.0.variants',
                 [],
@@ -59,6 +66,10 @@ class ExerciseCompleteControllerTest extends TestCase
             'errors_count' => 2,
             'hints_count' => 1,
             'lang_id' => LangCode::en->value,
+        ]);
+        $this->assertDatabaseHas('exercise_complete', [
+            'id' => $completeId,
+            'client_attempt_id' => $attemptId,
         ]);
         $this->assertFalse($repetition->refresh()->is_active);
     }
@@ -76,6 +87,8 @@ class ExerciseCompleteControllerTest extends TestCase
 
         $this->withToken($this->accessToken($user))
             ->postJson('/api/v1/exercises/complete', [
+                'attempt_id' => (string) Str::uuid(),
+                'completed_at' => now()->toISOString(),
                 'exercise_id' => $exercise->id,
                 'exercise_items_result' => [[
                     'exercise_item_id' => $otherItem->id,
@@ -105,6 +118,8 @@ class ExerciseCompleteControllerTest extends TestCase
 
         $this->withToken($this->accessToken($user))
             ->postJson('/api/v1/exercises/complete', [
+                'attempt_id' => (string) Str::uuid(),
+                'completed_at' => now()->toISOString(),
                 'exercise_id' => $exercise->id,
                 'exercise_items_result' => [[
                     'exercise_item_id' => $item->id,
@@ -129,6 +144,8 @@ class ExerciseCompleteControllerTest extends TestCase
 
         $this->withToken($this->accessToken($user))
             ->postJson('/api/v1/exercises/complete', [
+                'attempt_id' => 'not-a-uuid',
+                'completed_at' => now()->subDays(15)->toISOString(),
                 'exercise_id' => $exercise->id,
                 'exercise_items_result' => [[
                     'exercise_item_id' => $item->id,
@@ -140,6 +157,8 @@ class ExerciseCompleteControllerTest extends TestCase
             ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors([
+                'attempt_id',
+                'completed_at',
                 'exercise_items_result.0.errors_count',
                 'exercise_items_result.0.lang_id',
                 'exercise_items_result.0.variants.0',
@@ -164,6 +183,8 @@ class ExerciseCompleteControllerTest extends TestCase
             'is_active' => true,
         ]);
         $payload = [
+            'attempt_id' => (string) Str::uuid(),
+            'completed_at' => now()->toISOString(),
             'exercise_id' => $exercise->id,
             'exercise_items_result' => [[
                 'exercise_item_id' => $item->id,
@@ -181,6 +202,11 @@ class ExerciseCompleteControllerTest extends TestCase
         $this->assertFalse($repetition->refresh()->is_active);
 
         $this->postJson('/api/v1/exercises/complete', $payload)
+            ->assertOk();
+
+        $payload['attempt_id'] = (string) Str::uuid();
+
+        $this->postJson('/api/v1/exercises/complete', $payload)
             ->assertConflict()
             ->assertJsonPath('code', 'USER_EXERCISE_ALREADY_COMPLETED');
 
@@ -189,6 +215,78 @@ class ExerciseCompleteControllerTest extends TestCase
             ->assertJsonPath('code', 'USER_EXERCISE_ALREADY_COMPLETED');
 
         $this->assertDatabaseCount('exercise_complete', 1);
+    }
+
+    public function test_repeated_attempt_returns_original_completion_without_duplicate(): void
+    {
+        $this->seed([ExerciseTypesSeeder::class, LangSeeder::class]);
+
+        $user = User::factory()->create();
+        $exercise = $this->createExercise($user);
+        $item = $exercise->items()->create([
+            'word_id' => $this->createWord()->id,
+        ]);
+        $payload = [
+            'attempt_id' => (string) Str::uuid(),
+            'completed_at' => now()->subMinute()->toISOString(),
+            'exercise_id' => $exercise->id,
+            'exercise_items_result' => [[
+                'exercise_item_id' => $item->id,
+                'errors_count' => 0,
+                'hints_count' => 0,
+                'lang_id' => LangCode::en->value,
+                'variants' => ['cat'],
+            ]],
+        ];
+
+        $firstResponse = $this->withToken($this->accessToken($user))
+            ->postJson('/api/v1/exercises/complete', $payload)
+            ->assertCreated();
+
+        $this->postJson('/api/v1/exercises/complete', $payload)
+            ->assertOk()
+            ->assertJsonPath('data.id', $firstResponse->json('data.id'));
+
+        $this->assertDatabaseCount('exercise_complete', 1);
+        $this->assertDatabaseCount('exercise_items_result', 1);
+    }
+
+    public function test_attempt_id_cannot_be_reused_with_different_result(): void
+    {
+        $this->seed([ExerciseTypesSeeder::class, LangSeeder::class]);
+
+        $user = User::factory()->create();
+        $exercise = $this->createExercise($user);
+        $item = $exercise->items()->create([
+            'word_id' => $this->createWord()->id,
+        ]);
+        $payload = [
+            'attempt_id' => (string) Str::uuid(),
+            'completed_at' => now()->toISOString(),
+            'exercise_id' => $exercise->id,
+            'exercise_items_result' => [[
+                'exercise_item_id' => $item->id,
+                'errors_count' => 0,
+                'hints_count' => 0,
+                'lang_id' => LangCode::en->value,
+                'variants' => [],
+            ]],
+        ];
+
+        $this->withToken($this->accessToken($user))
+            ->postJson('/api/v1/exercises/complete', $payload)
+            ->assertCreated();
+
+        $payload['exercise_items_result'][0]['errors_count'] = 1;
+
+        $this->postJson('/api/v1/exercises/complete', $payload)
+            ->assertConflict()
+            ->assertJsonPath('code', 'IDEMPOTENCY_KEY_REUSED');
+
+        $this->assertDatabaseCount('exercise_complete', 1);
+        $this->assertDatabaseHas('exercise_items_result', [
+            'errors_count' => 0,
+        ]);
     }
 
     private function createExercise(User $user): Exercise

@@ -14,7 +14,7 @@ class AuthTokenService
     private const REFRESH_TOKEN_TTL_DAYS = 30;
 
     /**
-     * @return array{accessToken: string, refreshToken: string, tokenType: string, expiresIn: int}
+     * @return array{accessToken: string, refreshToken: string, tokenType: string, expiresIn: int, refreshExpiresIn: int}
      */
     public function issue(User $user): array
     {
@@ -33,7 +33,7 @@ class AuthTokenService
     }
 
     /**
-     * @return array{session: AuthSession, tokens: array{accessToken: string, refreshToken: string, tokenType: string, expiresIn: int}}
+     * @return array{session: AuthSession, tokens: array{accessToken: string, refreshToken: string, tokenType: string, expiresIn: int, refreshExpiresIn: int}}
      */
     public function refresh(string $refreshToken): array
     {
@@ -80,7 +80,7 @@ class AuthTokenService
     }
 
     /**
-     * @return array{accessToken: string, refreshToken: string, tokenType: string, expiresIn: int}
+     * @return array{accessToken: string, refreshToken: string, tokenType: string, expiresIn: int, refreshExpiresIn: int}
      */
     private function plainTokens(string $accessToken, string $refreshToken): array
     {
@@ -89,6 +89,7 @@ class AuthTokenService
             'refreshToken' => $refreshToken,
             'tokenType' => 'Bearer',
             'expiresIn' => self::ACCESS_TOKEN_TTL_MINUTES * 60,
+            'refreshExpiresIn' => self::REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60,
         ];
     }
 }

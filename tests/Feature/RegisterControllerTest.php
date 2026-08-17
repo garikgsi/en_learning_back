@@ -30,6 +30,7 @@ class RegisterControllerTest extends TestCase
                 'refreshToken',
                 'tokenType',
                 'expiresIn',
+                'refreshExpiresIn',
             ])
             ->assertJsonMissingPath('user.pin_hash')
             ->assertJsonMissingPath('user.pinCode');

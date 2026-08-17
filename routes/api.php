@@ -24,6 +24,7 @@ Route::prefix('v1')->group(function (): void {
         Route::patch('/users/me', [UserController::class, 'update']);
         Route::put('/users/me/pin', UpdatePinController::class);
         Route::get('/dictionary', [DictionaryController::class, 'index']);
+        Route::get('/dictionary/sync', [DictionaryController::class, 'sync']);
         Route::post(
             '/repetition-list/words',
             UserWordRepetitionController::class,
