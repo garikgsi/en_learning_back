@@ -22,3 +22,10 @@
   `docker compose exec -T app vendor/bin/pint --test` for formatting checks.
 - For targeted checks, append test paths or Pint file paths to those container
   commands. Check `docker compose ps` only when a container command fails.
+- Before running backend tests in a container that has been used with
+  production configuration, always clear Laravel's config cache first. Run
+  tests with explicit `APP_ENV=testing`, `DB_CONNECTION=sqlite`,
+  `DB_DATABASE=:memory:`, `CACHE_STORE=array`, and `SESSION_DRIVER=array`
+  overrides. Do this
+  immediately instead of investigating the predictable cascade of missing
+  seed data and PostgreSQL foreign-key failures again.

@@ -5,3 +5,10 @@
 GET {{baseUrl}}/api/v1/app-updates/latest
 Accept: application/json
 Authorization: Bearer {{accessToken}}
+
+### Force refresh the latest Android APK release
+# The backend limits forced GitHub refreshes to one request per minute.
+# @name refreshLatestAppUpdate
+GET {{baseUrl}}/api/v1/app-updates/latest?refresh=1
+Accept: application/json
+Authorization: Bearer {{accessToken}}

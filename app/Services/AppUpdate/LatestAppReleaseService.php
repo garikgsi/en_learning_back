@@ -22,10 +22,22 @@ class LatestAppReleaseService
      *     mandatory: bool
      * }|null
      */
-    public function latest(): ?array
+    public function latest(bool $forceRefresh = false): ?array
     {
         $freshCacheKey = $this->cacheKey('fresh');
-        $cached = Cache::get($freshCacheKey);
+        $manualRefreshCacheKey = $this->cacheKey('manual-refresh-cooldown');
+        $canForceRefresh = $forceRefresh
+            && ! Cache::has($manualRefreshCacheKey);
+
+        if ($canForceRefresh) {
+            Cache::put(
+                $manualRefreshCacheKey,
+                true,
+                now()->addSeconds($this->manualRefreshCooldownSeconds()),
+            );
+        }
+
+        $cached = $canForceRefresh ? null : Cache::get($freshCacheKey);
 
         if (is_array($cached) && array_key_exists('release', $cached)) {
             return $cached['release'];
@@ -257,5 +269,16 @@ class LatestAppReleaseService
     private function cacheTtlSeconds(): int
     {
         return max(60, (int) config('app_update.cache_ttl_seconds', 900));
+    }
+
+    private function manualRefreshCooldownSeconds(): int
+    {
+        return max(
+            30,
+            (int) config(
+                'app_update.manual_refresh_cooldown_seconds',
+                60,
+            ),
+        );
     }
 }
