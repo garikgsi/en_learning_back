@@ -1,4 +1,6 @@
-### Get the latest Android APK release
+### Get the latest Android APK release discovered from GitHub Releases
+# The backend caches the manifest and falls back to the last valid release
+# when GitHub is temporarily unavailable.
 # @name getLatestAppUpdate
 GET {{baseUrl}}/api/v1/app-updates/latest
 Accept: application/json
