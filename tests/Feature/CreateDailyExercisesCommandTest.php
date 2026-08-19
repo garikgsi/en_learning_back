@@ -23,16 +23,20 @@ class CreateDailyExercisesCommandTest extends TestCase
 
         $users = User::factory()
             ->count(2)
-            ->create()
-            ->each(fn (User $user) => $user->info()->create([
-                'first_grade_year' => now()->year - 3,
-            ]));
+            ->create();
 
-        foreach (range(1, 5) as $number) {
+        $users[0]->info()->create([
+            'first_grade_year' => now()->year - 5,
+        ]);
+        $users[1]->info()->create([
+            'first_grade_year' => now()->year - 6,
+        ]);
+
+        foreach (range(1, 20) as $number) {
             Word::query()->create([
                 'ru' => "слово{$number}",
                 'en' => "word{$number}",
-                'grade' => 3,
+                'grade' => 5,
             ]);
         }
 
@@ -43,7 +47,7 @@ class CreateDailyExercisesCommandTest extends TestCase
 
         $this->assertDatabaseCount('exercise', 2);
 
-        foreach ($users as $user) {
+        foreach ($users as $index => $user) {
             $exercise = Exercise::query()
                 ->where('user_id', $user->id)
                 ->sole();
@@ -55,7 +59,7 @@ class CreateDailyExercisesCommandTest extends TestCase
             $this->assertTrue(
                 $exercise->dueDate->equalTo('2026-07-28 00:00:00'),
             );
-            $this->assertCount(5, $exercise->items);
+            $this->assertCount($index === 0 ? 10 : 15, $exercise->items);
         }
     }
 

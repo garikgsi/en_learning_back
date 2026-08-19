@@ -5,10 +5,13 @@ namespace App\Services;
 use App\Enums\ExerciseTypeCode;
 use App\Exceptions\NoWordsAvailableException;
 use App\Models\Exercise;
+use App\Models\ExerciseItem;
 use App\Models\ExerciseType;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use DomainException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -43,9 +46,14 @@ class ExerciseService
                 $user,
                 $wordsCount,
             ): Exercise {
+                $excludedWordIds = (int) $type->id === ExerciseTypeCode::daily->value
+                    ? $this->wordIdsFromRecentUncompletedExercises($user, $dueDate)
+                    : [];
+
                 $words = $this->leastRepeatedWordsService->get(
                     $user->id,
                     $wordsCount,
+                    $excludedWordIds,
                 );
 
                 return $this->createWithWords(
@@ -93,5 +101,29 @@ class ExerciseService
 
             return $exercise->load(['type', 'items.word']);
         });
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function wordIdsFromRecentUncompletedExercises(
+        User $user,
+        CarbonInterface $dueDate,
+    ): array {
+        $dueDate = CarbonImmutable::instance($dueDate);
+
+        return ExerciseItem::query()
+            ->whereHas(
+                'exercise',
+                fn (Builder $query) => $query
+                    ->where('user_id', $user->id)
+                    ->where('dueDate', '>=', $dueDate->subMonth())
+                    ->where('dueDate', '<', $dueDate)
+                    ->whereDoesntHave('completions'),
+            )
+            ->distinct()
+            ->pluck('word_id')
+            ->map(fn ($wordId): int => (int) $wordId)
+            ->all();
     }
 }

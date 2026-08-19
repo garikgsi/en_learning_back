@@ -29,3 +29,15 @@
   overrides. Do this
   immediately instead of investigating the predictable cascade of missing
   seed data and PostgreSQL foreign-key failures again.
+
+## Production deployment handoff
+
+- The production server has a backend publication script that fetches and
+  fast-forwards `main`, rebuilds and starts the `app` service, installs
+  production Composer dependencies, refreshes Laravel optimization caches,
+  and restarts queue workers.
+- For an ordinary backend deployment, do not repeat the individual shell
+  commands. Tell the user only: `запусти скрипт публикации на бэке`.
+- Provide additional production commands only when a release requires an
+  exceptional operation that is not covered by the publication script, such
+  as a database migration or a one-time maintenance action.

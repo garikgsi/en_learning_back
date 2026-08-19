@@ -12,10 +12,14 @@ use InvalidArgumentException;
 class LeastRepeatedWordsService
 {
     /**
+     * @param  array<int, int>  $excludedWordIds
      * @return array<int, Word>
      */
-    public function get(string $userId, int $wordsCount): array
-    {
+    public function get(
+        string $userId,
+        int $wordsCount,
+        array $excludedWordIds = [],
+    ): array {
         if ($wordsCount < 1) {
             throw new InvalidArgumentException(
                 'Words count must be at least 1.',
@@ -35,6 +39,7 @@ class LeastRepeatedWordsService
         $priorityWords = UserWordRepetition::query()
             ->where('user_id', $userId)
             ->where('is_active', true)
+            ->whereNotIn('word_id', $excludedWordIds)
             ->with('word')
             ->inRandomOrder()
             ->limit($wordsCount)
@@ -56,7 +61,7 @@ class LeastRepeatedWordsService
 
         $automaticWords = Word::query()
             ->where('grade', '<=', $user->grade)
-            ->whereNotIn('id', $priorityWordIds)
+            ->whereNotIn('id', [...$priorityWordIds, ...$excludedWordIds])
             ->whereNot(
                 fn (Builder $query) => $query
                     ->whereLike('words.ru', '% %')

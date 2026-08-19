@@ -13,6 +13,10 @@ use Symfony\Component\Console\Command\Command as SymfonyCommand;
 
 class CreateDailyExercises extends Command
 {
+    private const int PRIMARY_SCHOOL_WORDS_COUNT = 10;
+
+    private const int DEFAULT_WORDS_COUNT = 15;
+
     protected $signature = 'exercises:create-daily';
 
     protected $description = 'Create daily exercises for all users';
@@ -52,6 +56,9 @@ class CreateDailyExercises extends Command
                             $type,
                             $user,
                             $dueDate,
+                            $user->grade <= 5
+                                ? self::PRIMARY_SCHOOL_WORDS_COUNT
+                                : self::DEFAULT_WORDS_COUNT,
                         );
                         $createdCount++;
                     } catch (DomainException $exception) {

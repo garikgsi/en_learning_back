@@ -4,11 +4,13 @@ namespace Tests\Feature;
 
 use App\Enums\ExerciseTypeCode;
 use App\Exceptions\NoWordsAvailableException;
+use App\Models\Exercise;
 use App\Models\ExerciseType;
 use App\Models\User;
 use App\Models\UserWordRepetition;
 use App\Models\Word;
 use App\Services\ExerciseService;
+use Carbon\CarbonImmutable;
 use Database\Seeders\ExerciseTypesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -178,5 +180,65 @@ class ExerciseServiceTest extends TestCase
             $exercise->items->pluck('word_id')->all(),
         );
         $this->assertTrue($repetition->refresh()->is_active);
+    }
+
+    public function test_daily_exercise_excludes_words_from_recent_uncompleted_exercises(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-08-19 00:00:00'));
+        $this->seed(ExerciseTypesSeeder::class);
+
+        $user = User::factory()->create();
+        $user->info()->create([
+            'first_grade_year' => now()->year - 3,
+        ]);
+
+        $words = collect(range(1, 6))->map(
+            fn (int $number): Word => Word::query()->create([
+                'ru' => "слово{$number}",
+                'en' => "word{$number}",
+                'grade' => 3,
+            ]),
+        );
+
+        $recentUncompleted = Exercise::query()->create([
+            'user_id' => $user->id,
+            'type_id' => ExerciseTypeCode::daily->value,
+            'dueDate' => now()->subDays(10),
+        ]);
+        $recentUncompleted->items()->create(['word_id' => $words[0]->id]);
+        UserWordRepetition::query()->create([
+            'user_id' => $user->id,
+            'word_id' => $words[0]->id,
+            'is_active' => true,
+        ]);
+
+        $recentCompleted = Exercise::query()->create([
+            'user_id' => $user->id,
+            'type_id' => ExerciseTypeCode::daily->value,
+            'dueDate' => now()->subDays(10),
+        ]);
+        $recentCompleted->items()->create(['word_id' => $words[1]->id]);
+        $recentCompleted->completions()->create();
+
+        $oldUncompleted = Exercise::query()->create([
+            'user_id' => $user->id,
+            'type_id' => ExerciseTypeCode::daily->value,
+            'dueDate' => now()->subMonth()->subDay(),
+        ]);
+        $oldUncompleted->items()->create(['word_id' => $words[2]->id]);
+
+        $exercise = app(ExerciseService::class)->create(
+            ExerciseTypeCode::daily,
+            $user,
+            now(),
+            6,
+        );
+
+        $wordIds = $exercise->items->pluck('word_id');
+
+        $this->assertCount(5, $wordIds);
+        $this->assertFalse($wordIds->contains($words[0]->id));
+        $this->assertTrue($wordIds->contains($words[1]->id));
+        $this->assertTrue($wordIds->contains($words[2]->id));
     }
 }
