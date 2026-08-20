@@ -63,6 +63,32 @@ class UserExerciseControllerTest extends TestCase
         $this->assertDatabaseCount('exercise', 0);
     }
 
+    public function test_it_returns_the_existing_uncompleted_user_exercise_for_today(): void
+    {
+        $this->seed(ExerciseTypesSeeder::class);
+        $now = CarbonImmutable::parse('2026-07-31T14:30:00Z');
+        $this->travelTo($now);
+        $user = $this->userWithGrade(3);
+        $word = Word::query()->create([
+            'ru' => 'слово',
+            'en' => 'word',
+            'grade' => 3,
+        ]);
+        $exercise = Exercise::query()->create([
+            'user_id' => $user->id,
+            'type_id' => ExerciseTypeCode::user->value,
+            'dueDate' => $now->startOfDay(),
+        ]);
+        $exercise->items()->create(['word_id' => $word->id]);
+
+        $this->withToken($this->accessToken($user))
+            ->postJson('/api/v1/exercises')
+            ->assertOk()
+            ->assertJsonPath('item.id', $exercise->id);
+
+        $this->assertDatabaseCount('exercise', 1);
+    }
+
     public function test_exercise_is_not_created_when_dictionary_has_no_words(): void
     {
         $this->seed(ExerciseTypesSeeder::class);

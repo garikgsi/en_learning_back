@@ -21,6 +21,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ExerciseController extends Controller
 {
@@ -37,12 +38,38 @@ class ExerciseController extends Controller
             ], 409);
         }
 
+        $created = false;
+
         try {
-            $exercise = $exerciseService->create(
-                ExerciseTypeCode::user,
+            $exercise = DB::transaction(function () use (
+                $exerciseService,
                 $user,
-                today(),
-            );
+                &$created,
+            ): Exercise {
+                User::query()
+                    ->whereKey($user->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                $existing = $this->queryFor($user)
+                    ->where('type_id', ExerciseTypeCode::user->value)
+                    ->whereBetween('dueDate', [today(), today()->endOfDay()])
+                    ->whereDoesntHave('completions')
+                    ->oldest()
+                    ->first();
+
+                if ($existing) {
+                    return $existing;
+                }
+
+                $created = true;
+
+                return $exerciseService->create(
+                    ExerciseTypeCode::user,
+                    $user,
+                    today(),
+                );
+            });
         } catch (NoWordsAvailableException) {
             return response()->json([
                 'message' => 'Нет слов в словаре',
@@ -52,7 +79,7 @@ class ExerciseController extends Controller
 
         return response()->json([
             'item' => (new ExerciseResource($exercise))->resolve($request),
-        ], 201);
+        ], $created ? 201 : 200);
     }
 
     public function complete(

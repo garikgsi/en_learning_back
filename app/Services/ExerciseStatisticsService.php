@@ -149,11 +149,12 @@ class ExerciseStatisticsService
             ->where('user_id', $user->id)
             ->whereBetween('dueDate', [$dateFrom, $dateTo])
             ->whereDoesntHave('completions')
-            ->with('type')
+            ->with(['type', 'items.word:id,ru,en'])
             ->withCount('items')
             ->get()
             ->map(fn (Exercise $exercise): array => [
                 'exerciseId' => $exercise->id,
+                'createdAt' => $exercise->created_at->toISOString(),
                 'completionId' => null,
                 'status' => 'uncompleted',
                 'date' => $exercise->dueDate->toISOString(),
@@ -164,6 +165,17 @@ class ExerciseStatisticsService
                 ],
                 'wordsCount' => $exercise->items_count,
                 'wordsWithErrors' => 0,
+                'errorsCount' => 0,
+                'errorWords' => [],
+                'words' => $exercise->items
+                    ->sortBy('id')
+                    ->map(fn ($item): array => [
+                        'english' => $item->word->en,
+                        'russian' => $item->word->ru,
+                        'hasErrors' => false,
+                    ])
+                    ->values()
+                    ->all(),
                 'successPercentage' => 0,
             ]);
 
@@ -175,7 +187,8 @@ class ExerciseStatisticsService
             )
             ->with([
                 'exercise.type',
-                'exercise.items:id,exercise_id',
+                'exercise.items:id,exercise_id,word_id',
+                'exercise.items.word:id,ru,en',
                 'itemResults:id,exercise_complete_id,exercise_item_id,errors_count',
             ])
             ->get()
@@ -186,6 +199,21 @@ class ExerciseStatisticsService
                     ->pluck('exercise_item_id')
                     ->unique()
                     ->count();
+                $errorWords = $completion->itemResults
+                    ->where('errors_count', '>', 0)
+                    ->pluck('exercise_item_id')
+                    ->unique()
+                    ->flip();
+                $words = $completion->exercise->items
+                    ->sortBy('id')
+                    ->map(fn ($item): array => [
+                        'english' => $item->word->en,
+                        'russian' => $item->word->ru,
+                        'hasErrors' => $errorWords->has($item->id),
+                    ])
+                    ->values();
+                $errorsCount = $completion->itemResults
+                    ->sum('errors_count');
                 $successPercentage = $wordsCount === 0
                     ? 0
                     : (int) round(
@@ -194,6 +222,8 @@ class ExerciseStatisticsService
 
                 return [
                     'exerciseId' => $completion->exercise_id,
+                    'createdAt' => $completion->exercise->created_at
+                        ->toISOString(),
                     'completionId' => $completion->id,
                     'status' => 'completed',
                     'date' => $completion->completed_at->toISOString(),
@@ -204,6 +234,13 @@ class ExerciseStatisticsService
                     ],
                     'wordsCount' => $wordsCount,
                     'wordsWithErrors' => $wordsWithErrors,
+                    'errorsCount' => $errorsCount,
+                    'errorWords' => $words
+                        ->where('hasErrors', true)
+                        ->pluck('english')
+                        ->values()
+                        ->all(),
+                    'words' => $words->all(),
                     'successPercentage' => $successPercentage,
                 ];
             });

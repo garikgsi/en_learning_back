@@ -5,6 +5,7 @@ Accept: application/json
 Authorization: Bearer {{accessToken}}
 
 ### Create a user exercise for the current date
+# Returns the existing unfinished user exercise with 200 when one already exists.
 # Returns 409 DICTIONARY_EMPTY with "Нет слов в словаре" when no words are
 # available; an exercise is not created in that case.
 # @name createUserExercise
@@ -18,7 +19,7 @@ GET {{baseUrl}}/api/v1/exercises/current
 Accept: application/json
 Authorization: Bearer {{accessToken}}
 
-### Get calendar statistics plus current week/month charts for all users
+### Get calendar statistics (including English words, Russian translations, and their error state) plus current week/month charts for all users
 # Calendar items use the requested inclusive period and current user.
 # charts.week and charts.month contain every user with learnedWords,
 # wordsToRepeat and completedExercises, including user-created exercises.
