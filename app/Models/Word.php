@@ -13,7 +13,14 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
  * @property-read int $successful_repeat_count
  * @property-read int $failed_repeat_count
  */
-#[Fillable(['ru', 'en', 'grade'])]
+#[Fillable([
+    'ru',
+    'en',
+    'ru_variants',
+    'en_variants',
+    'transcription',
+    'grade',
+])]
 class Word extends Model
 {
     /**
@@ -52,6 +59,8 @@ class Word extends Model
     {
         return [
             'grade' => 'integer',
+            'ru_variants' => 'array',
+            'en_variants' => 'array',
         ];
     }
 }

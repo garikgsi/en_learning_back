@@ -14,6 +14,8 @@ use App\Services\Auth\AuthTokenService;
 use Carbon\CarbonImmutable;
 use Database\Seeders\LangSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class DictionaryControllerTest extends TestCase
@@ -33,6 +35,155 @@ class DictionaryControllerTest extends TestCase
             ->assertJsonPath('availableGrade', 3)
             ->assertJsonPath('total', 1)
             ->assertJsonPath('items.0.id', $availableWord->id);
+    }
+
+    public function test_dictionary_returns_translation_variants(): void
+    {
+        $user = $this->userWithFirstGradeYear(now()->year - 3);
+        $word = Word::query()->create([
+            'ru' => 'дом',
+            'en' => 'home',
+            'ru_variants' => ['жилище'],
+            'en_variants' => ['house'],
+            'transcription' => '/həʊm/',
+            'grade' => 1,
+        ]);
+
+        $this->withToken($this->accessToken($user))
+            ->getJson('/api/v1/dictionary')
+            ->assertOk()
+            ->assertJsonPath('items.0.id', $word->id)
+            ->assertJsonPath('items.0.ruVariants', ['жилище'])
+            ->assertJsonPath('items.0.enVariants', ['house'])
+            ->assertJsonPath('items.0.transcription', '/həʊm/');
+    }
+
+    public function test_dictionary_looks_up_translation_and_transcription(): void
+    {
+        $user = $this->userWithFirstGradeYear(now()->year - 3);
+        $existing = $this->createWord('магазин', 'shop', 1);
+        Http::fake([
+            'api.mymemory.translated.net/*' => Http::response([
+                'responseData' => ['translatedText' => 'store'],
+            ]),
+            'www.dictionaryapi.com/*' => Http::response([[
+                'meta' => ['id' => 'store:1'],
+                'hwi' => ['prs' => [[
+                    'ipa' => 'ˈstoɚ',
+                    'sound' => ['audio' => 'store001'],
+                ]]],
+            ]]),
+        ]);
+
+        $this->withToken($this->accessToken($user))
+            ->postJson('/api/v1/dictionary/lookup', [
+                'word' => ' магазин ',
+                'sourceLanguage' => 'ru',
+            ])
+            ->assertOk()
+            ->assertJsonPath('russian', 'магазин')
+            ->assertJsonPath('english', 'store')
+            ->assertJsonPath('transcription', '/ˈstoɚ/')
+            ->assertJsonPath('existingWords.0.id', $existing->id);
+
+        Http::assertSentCount(2);
+    }
+
+    public function test_dictionary_audio_is_saved_and_reused(): void
+    {
+        Storage::fake('dictionary_audio');
+        $word = $this->createWord('магазин', 'store', 1);
+        Http::fake([
+            'www.dictionaryapi.com/*' => Http::response([[
+                'meta' => ['id' => 'store:1'],
+                'hwi' => ['prs' => [[
+                    'ipa' => 'ˈstoɚ',
+                    'sound' => ['audio' => 'store001'],
+                ]]],
+            ]]),
+            'media.merriam-webster.com/*' => Http::response(
+                'merriam mp3',
+                200,
+                ['Content-Type' => 'audio/mpeg'],
+            ),
+        ]);
+
+        $this
+            ->get("/api/v1/dictionary/words/{$word->id}/audio")
+            ->assertOk()
+            ->assertHeader('Content-Type', 'audio/mpeg')
+            ->assertHeader('Cache-Control', 'max-age=86400, public')
+            ->assertStreamedContent('merriam mp3');
+        $this
+            ->get("/api/v1/dictionary/words/{$word->id}/audio")
+            ->assertOk()
+            ->assertStreamedContent('merriam mp3');
+
+        $this->assertSame('/ˈstoɚ/', $word->fresh()->transcription);
+        $this->assertCount(
+            1,
+            Storage::disk('dictionary_audio')->allFiles(),
+        );
+        Http::assertSentCount(2);
+    }
+
+    public function test_dictionary_audio_falls_back_to_voice_rss(): void
+    {
+        Storage::fake('dictionary_audio');
+        $word = $this->createWord('особое выражение', 'special phrase', 1);
+        Http::fake([
+            'www.dictionaryapi.com/*' => Http::response([]),
+            'api.dictionaryapi.dev/*' => Http::response([], 404),
+            'api.voicerss.org*' => Http::response(
+                'voice rss mp3',
+                200,
+                ['Content-Type' => 'audio/mpeg'],
+            ),
+        ]);
+
+        $this
+            ->get("/api/v1/dictionary/words/{$word->id}/audio")
+            ->assertOk()
+            ->assertHeader('Content-Type', 'audio/mpeg')
+            ->assertStreamedContent('voice rss mp3');
+
+        $this->assertCount(
+            1,
+            Storage::disk('dictionary_audio')->allFiles(),
+        );
+        Http::assertSent(fn ($request): bool => $request->url()
+            === 'https://api.voicerss.org');
+    }
+
+    public function test_user_can_store_a_reviewed_dictionary_word(): void
+    {
+        $user = $this->userWithFirstGradeYear(now()->year - 4);
+
+        $this->withToken($this->accessToken($user))
+            ->postJson('/api/v1/dictionary/words', [
+                'russian' => ' магазин ',
+                'english' => ' store ',
+                'transcription' => ' /stɔː/ ',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('wasCreated', true)
+            ->assertJsonPath('item.ru', 'магазин')
+            ->assertJsonPath('item.en', 'store')
+            ->assertJsonPath('item.transcription', '/stɔː/');
+
+        $word = Word::query()->sole();
+        $this->assertSame(4, $word->grade);
+
+        $this->withToken($this->accessToken($user))
+            ->postJson('/api/v1/dictionary/words', [
+                'russian' => 'МАГАЗИН',
+                'english' => 'STORE',
+            ])
+            ->assertOk()
+            ->assertJsonPath('wasCreated', false)
+            ->assertJsonPath('item.id', $word->id);
+
+        $this->assertDatabaseCount('words', 1);
     }
 
     public function test_dictionary_searches_both_languages_case_insensitively(): void
@@ -177,7 +328,8 @@ class DictionaryControllerTest extends TestCase
             ->getJson('/api/v1/dictionary/sync')
             ->assertOk()
             ->assertJsonPath('availableGrade', 2)
-            ->assertJsonPath('latestCreatedAt', '2026-08-13T10:00:00.000000Z')
+            ->assertJsonPath('revision', 4)
+            ->assertJsonPath('latestCreatedAt', '2026-08-21T00:00:00.000000Z')
             ->assertJsonPath('isFullSync', true)
             ->assertJsonPath('page', 1)
             ->assertJsonPath('perPage', 500)
@@ -198,12 +350,12 @@ class DictionaryControllerTest extends TestCase
         $newerWord->save();
 
         $this->withToken($this->accessToken($user))
-            ->getJson('/api/v1/dictionary/sync?createdAfter=2026-08-13T10:00:00Z&availableGrade=2')
+            ->getJson('/api/v1/dictionary/sync?createdAfter=2026-08-13T10:00:00Z&availableGrade=2&revision=4')
             ->assertOk()
             ->assertJsonPath('isFullSync', false)
             ->assertJsonCount(1, 'items')
             ->assertJsonPath('items.0.id', $newerWord->id)
-            ->assertJsonPath('latestCreatedAt', '2026-08-14T11:30:00.000000Z');
+            ->assertJsonPath('latestCreatedAt', '2026-08-21T00:00:00.000000Z');
     }
 
     public function test_dictionary_sync_is_full_when_users_available_grade_changes(): void
@@ -218,6 +370,39 @@ class DictionaryControllerTest extends TestCase
             ->assertJsonPath('isFullSync', true)
             ->assertJsonCount(1, 'items')
             ->assertJsonPath('items.0.id', $word->id);
+    }
+
+    public function test_dictionary_sync_is_full_when_dictionary_revision_changes(): void
+    {
+        $user = $this->userWithFirstGradeYear(now()->year - 3);
+        $word = $this->createWord('школа', 'school', 3);
+
+        $this->withToken($this->accessToken($user))
+            ->getJson('/api/v1/dictionary/sync?createdAfter='.urlencode($word->created_at->toISOString()).'&availableGrade=3&revision=1')
+            ->assertOk()
+            ->assertJsonPath('revision', 4)
+            ->assertJsonPath('isFullSync', true)
+            ->assertJsonCount(1, 'items');
+    }
+
+    public function test_legacy_dictionary_cache_is_refreshed_only_once(): void
+    {
+        $user = $this->userWithFirstGradeYear(now()->year - 3);
+        $word = $this->createWord('школа', 'school', 3);
+        $word->created_at = CarbonImmutable::parse('2026-08-13T10:00:00Z');
+        $word->save();
+
+        $first = $this->withToken($this->accessToken($user))
+            ->getJson('/api/v1/dictionary/sync?createdAfter=2026-08-13T10:00:00Z&availableGrade=3')
+            ->assertOk()
+            ->assertJsonPath('isFullSync', true)
+            ->assertJsonPath('latestCreatedAt', '2026-08-21T00:00:00.000000Z');
+
+        $this->withToken($this->accessToken($user))
+            ->getJson('/api/v1/dictionary/sync?createdAfter='.urlencode($first->json('latestCreatedAt')).'&availableGrade=3')
+            ->assertOk()
+            ->assertJsonPath('isFullSync', false)
+            ->assertJsonCount(0, 'items');
     }
 
     public function test_dictionary_sync_validates_cursor(): void

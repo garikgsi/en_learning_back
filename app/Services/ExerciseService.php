@@ -8,6 +8,7 @@ use App\Models\Exercise;
 use App\Models\ExerciseItem;
 use App\Models\ExerciseType;
 use App\Models\User;
+use App\Models\Word;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use DomainException;
@@ -19,6 +20,7 @@ class ExerciseService
 {
     public function __construct(
         private readonly LeastRepeatedWordsService $leastRepeatedWordsService,
+        private readonly ExerciseWordDeduplicator $wordDeduplicator,
     ) {}
 
     public function create(
@@ -80,6 +82,19 @@ class ExerciseService
         }
 
         $wordIds = array_values(array_unique($wordIds));
+
+        if ($wordIds !== []) {
+            $words = Word::query()
+                ->findOrFail($wordIds)
+                ->keyBy('id');
+            $wordIds = array_map(
+                fn (Word $word): int => $word->id,
+                $this->wordDeduplicator->unique(array_map(
+                    fn (int $wordId): Word => $words->get($wordId),
+                    $wordIds,
+                )),
+            );
+        }
 
         if ($wordIds === []) {
             throw new NoWordsAvailableException;

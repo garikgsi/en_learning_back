@@ -38,6 +38,17 @@ return [
             'report' => false,
         ],
 
+        'dictionary_audio' => [
+            'driver' => 'local',
+            'root' => env(
+                'DICTIONARY_AUDIO_PATH',
+                storage_path('app/dictionary/audio'),
+            ),
+            'visibility' => 'private',
+            'throw' => true,
+            'report' => true,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

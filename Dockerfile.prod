@@ -48,6 +48,7 @@ RUN composer dump-autoload \
     && mkdir -p \
         storage/app/private \
         storage/app/public \
+        storage/app/dictionary/audio \
         storage/framework/cache \
         storage/framework/sessions \
         storage/framework/views \
@@ -66,4 +67,3 @@ COPY --from=app /var/www/html/public /var/www/html/public
 
 RUN rm -rf /var/www/html/public/storage \
     && ln -s /var/www/html/storage/app/public /var/www/html/public/storage
-

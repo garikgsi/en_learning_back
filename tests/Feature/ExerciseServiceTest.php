@@ -108,6 +108,44 @@ class ExerciseServiceTest extends TestCase
         $this->assertSame(ExerciseTypeCode::daily->name, $exercise->type->name);
     }
 
+    public function test_it_removes_words_with_duplicate_primary_translations(): void
+    {
+        $user = User::factory()->create();
+        $this->seed(ExerciseTypesSeeder::class);
+        $first = Word::query()->create([
+            'ru' => 'дом',
+            'en' => 'home',
+            'grade' => 1,
+        ]);
+        $sameEnglish = Word::query()->create([
+            'ru' => 'жилище',
+            'en' => 'home',
+            'grade' => 1,
+        ]);
+        $sameRussian = Word::query()->create([
+            'ru' => 'дом',
+            'en' => 'house',
+            'grade' => 1,
+        ]);
+        $different = Word::query()->create([
+            'ru' => 'школа',
+            'en' => 'school',
+            'grade' => 1,
+        ]);
+
+        $exercise = app(ExerciseService::class)->createWithWords(
+            ExerciseTypeCode::daily,
+            $user,
+            now(),
+            [$first->id, $sameEnglish->id, $sameRussian->id, $different->id],
+        );
+
+        $this->assertSame(
+            [$first->id, $different->id],
+            $exercise->items->pluck('word_id')->all(),
+        );
+    }
+
     public function test_it_excludes_phrases_in_either_language(): void
     {
         $user = User::factory()->create();

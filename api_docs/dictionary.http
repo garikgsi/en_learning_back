@@ -9,10 +9,11 @@ Authorization: Bearer {{accessToken}}
 
 ### Synchronize a page of the dictionary cache
 # Fetch every page on the first request. Pass latestCreatedAt from the previous
-# response to receive only words created later. Search and display pagination
-# are performed by the client from its local cache after all pages are saved.
+# response to receive only words created later. Pass revision from the previous
+# response so the server can request a full refresh after dictionary changes.
+# Search and display pagination are performed from the local cache.
 # @name syncDictionary
-GET {{baseUrl}}/api/v1/dictionary/sync?page=1&perPage=500&createdAfter=2026-08-14T09:30:00.000Z&availableGrade=5
+GET {{baseUrl}}/api/v1/dictionary/sync?page=1&perPage=500&createdAfter=2026-08-14T09:30:00.000Z&availableGrade=5&revision=4
 Accept: application/json
 Authorization: Bearer {{accessToken}}
 
@@ -26,3 +27,40 @@ Authorization: Bearer {{accessToken}}
 {
     "word_id": 42
 }
+
+### Look up a Russian word and preview its English translation
+# The response also includes an English transcription when the pronunciation
+# provider knows the word, plus existing dictionary rows for manual review.
+# @name lookupDictionaryWord
+POST {{baseUrl}}/api/v1/dictionary/lookup
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "word": "магазин",
+    "sourceLanguage": "ru"
+}
+
+### Save a manually reviewed dictionary word
+# The grade is assigned from the current user's available grade.
+# @name storeDictionaryWord
+POST {{baseUrl}}/api/v1/dictionary/words
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "russian": "магазин",
+    "english": "store",
+    "transcription": "/stɔː/"
+}
+
+### Play an English word pronunciation
+# The first request obtains audio from Merriam-Webster or the VoiceRSS fallback
+# and saves the MP3 on the private local dictionary_audio disk. Later requests
+# are served from that local file. This endpoint is intentionally public so an
+# HTML audio player can stream it without an Authorization header.
+# @name getDictionaryWordAudio
+GET {{baseUrl}}/api/v1/dictionary/words/42/audio
+Accept: audio/mpeg

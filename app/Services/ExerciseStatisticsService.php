@@ -149,7 +149,10 @@ class ExerciseStatisticsService
             ->where('user_id', $user->id)
             ->whereBetween('dueDate', [$dateFrom, $dateTo])
             ->whereDoesntHave('completions')
-            ->with(['type', 'items.word:id,ru,en'])
+            ->with([
+                'type',
+                'items.word:id,ru,en,ru_variants,en_variants,transcription',
+            ])
             ->withCount('items')
             ->get()
             ->map(fn (Exercise $exercise): array => [
@@ -170,8 +173,12 @@ class ExerciseStatisticsService
                 'words' => $exercise->items
                     ->sortBy('id')
                     ->map(fn ($item): array => [
+                        'wordId' => $item->word->id,
                         'english' => $item->word->en,
                         'russian' => $item->word->ru,
+                        'ruVariants' => $item->word->ru_variants ?? [],
+                        'enVariants' => $item->word->en_variants ?? [],
+                        'transcription' => $item->word->transcription,
                         'hasErrors' => false,
                     ])
                     ->values()
@@ -188,7 +195,7 @@ class ExerciseStatisticsService
             ->with([
                 'exercise.type',
                 'exercise.items:id,exercise_id,word_id',
-                'exercise.items.word:id,ru,en',
+                'exercise.items.word:id,ru,en,ru_variants,en_variants,transcription',
                 'itemResults:id,exercise_complete_id,exercise_item_id,errors_count',
             ])
             ->get()
@@ -207,8 +214,12 @@ class ExerciseStatisticsService
                 $words = $completion->exercise->items
                     ->sortBy('id')
                     ->map(fn ($item): array => [
+                        'wordId' => $item->word->id,
                         'english' => $item->word->en,
                         'russian' => $item->word->ru,
+                        'ruVariants' => $item->word->ru_variants ?? [],
+                        'enVariants' => $item->word->en_variants ?? [],
+                        'transcription' => $item->word->transcription,
                         'hasErrors' => $errorWords->has($item->id),
                     ])
                     ->values();

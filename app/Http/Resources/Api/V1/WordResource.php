@@ -8,7 +8,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 class WordResource extends JsonResource
 {
     /**
-     * @return array<string, bool|int|string>
+     * @return array<string, array<int, string>|bool|int|string|null>
      */
     public function toArray(Request $request): array
     {
@@ -16,6 +16,9 @@ class WordResource extends JsonResource
             'id' => $this->id,
             'ru' => $this->ru,
             'en' => $this->en,
+            'ruVariants' => $this->ru_variants ?? [],
+            'enVariants' => $this->en_variants ?? [],
+            'transcription' => $this->transcription,
             'grade' => $this->grade,
             'createdAt' => $this->created_at->toISOString(),
             'repeatCount' => (int) ($this->repeat_count ?? 0),

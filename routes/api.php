@@ -19,6 +19,11 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/refresh', RefreshTokenController::class);
     });
 
+    Route::get(
+        '/dictionary/words/{word}/audio',
+        [DictionaryController::class, 'audio'],
+    )->whereNumber('word');
+
     Route::middleware('access.token')->group(function (): void {
         Route::get('/app-updates/latest', AppUpdateController::class);
         Route::post('/auth/logout', LogoutController::class);
@@ -27,6 +32,8 @@ Route::prefix('v1')->group(function (): void {
         Route::put('/users/me/pin', UpdatePinController::class);
         Route::get('/dictionary', [DictionaryController::class, 'index']);
         Route::get('/dictionary/sync', [DictionaryController::class, 'sync']);
+        Route::post('/dictionary/lookup', [DictionaryController::class, 'lookup']);
+        Route::post('/dictionary/words', [DictionaryController::class, 'store']);
         Route::post(
             '/repetition-list/words',
             UserWordRepetitionController::class,

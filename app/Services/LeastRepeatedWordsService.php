@@ -11,6 +11,10 @@ use InvalidArgumentException;
 
 class LeastRepeatedWordsService
 {
+    public function __construct(
+        private readonly ExerciseWordDeduplicator $wordDeduplicator,
+    ) {}
+
     /**
      * @param  array<int, int>  $excludedWordIds
      * @return array<int, Word>
@@ -42,26 +46,14 @@ class LeastRepeatedWordsService
             ->whereNotIn('word_id', $excludedWordIds)
             ->with('word')
             ->inRandomOrder()
-            ->limit($wordsCount)
             ->lockForUpdate()
             ->get()
             ->pluck('word')
             ->all();
 
-        $remainingWordsCount = $wordsCount - count($priorityWords);
-
-        if ($remainingWordsCount === 0) {
-            return $priorityWords;
-        }
-
-        $priorityWordIds = array_map(
-            fn (Word $word): int => $word->id,
-            $priorityWords,
-        );
-
         $automaticWords = Word::query()
             ->where('grade', '<=', $user->grade)
-            ->whereNotIn('id', [...$priorityWordIds, ...$excludedWordIds])
+            ->whereNotIn('id', $excludedWordIds)
             ->whereNot(
                 fn (Builder $query) => $query
                     ->whereLike('words.ru', '% %')
@@ -77,10 +69,12 @@ class LeastRepeatedWordsService
             ])
             ->orderBy('repeats_count')
             ->inRandomOrder()
-            ->limit($remainingWordsCount)
             ->get()
             ->all();
 
-        return [...$priorityWords, ...$automaticWords];
+        return $this->wordDeduplicator->unique(
+            [...$priorityWords, ...$automaticWords],
+            $wordsCount,
+        );
     }
 }

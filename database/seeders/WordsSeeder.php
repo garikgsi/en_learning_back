@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Word;
+use App\Services\WordVariantSynchronizer;
 use Illuminate\Database\Seeder;
 
 class WordsSeeder extends Seeder
@@ -118,5 +119,7 @@ class WordsSeeder extends Seeder
                 : $word['grade'];
             $model->save();
         }
+
+        app(WordVariantSynchronizer::class)->synchronize();
     }
 }

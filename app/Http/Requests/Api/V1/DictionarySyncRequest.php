@@ -19,6 +19,7 @@ class DictionarySyncRequest extends FormRequest
         return [
             'createdAfter' => ['nullable', 'date'],
             'availableGrade' => ['nullable', 'integer', 'min:1'],
+            'revision' => ['nullable', 'integer', 'min:1'],
             'page' => ['sometimes', 'integer', 'min:1'],
             'perPage' => ['sometimes', 'integer', 'min:1', 'max:1000'],
         ];

@@ -103,6 +103,14 @@ class ExerciseStatisticsControllerTest extends TestCase
             ->assertJsonPath('items.1.errorWords.0', "word {$completed->id} 1")
             ->assertJsonPath('items.1.words.0.english', "word {$completed->id} 1")
             ->assertJsonPath('items.1.words.0.russian', "слово {$completed->id} 1")
+            ->assertJsonPath(
+                'items.1.words.0.ruVariants',
+                ["перевод {$completed->id} 1"],
+            )
+            ->assertJsonPath(
+                'items.1.words.0.enVariants',
+                ["synonym {$completed->id} 1"],
+            )
             ->assertJsonPath('items.1.words.0.hasErrors', true)
             ->assertJsonPath('items.1.words.1.hasErrors', false)
             ->assertJsonPath('items.1.successPercentage', 50)
@@ -292,6 +300,8 @@ class ExerciseStatisticsControllerTest extends TestCase
             $word = Word::query()->create([
                 'ru' => "слово {$exercise->id} {$index}",
                 'en' => "word {$exercise->id} {$index}",
+                'ru_variants' => ["перевод {$exercise->id} {$index}"],
+                'en_variants' => ["synonym {$exercise->id} {$index}"],
                 'grade' => 1,
             ]);
 
