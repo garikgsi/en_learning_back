@@ -18,6 +18,18 @@ class EnrichDictionaryTranscriptions extends Command
     ): int {
         $query = Word::query()
             ->whereNull('transcription')
+            ->where(function ($query): void {
+                $query
+                    ->whereNull('transcription_checked_at')
+                    ->orWhere(
+                        'transcription_checked_at',
+                        '<=',
+                        now()->subDay(),
+                    );
+            })
+            ->orderByRaw(
+                'CASE WHEN transcription_checked_at IS NULL THEN 0 ELSE 1 END',
+            )
             ->orderBy('id');
         $limit = $this->option('limit');
 
@@ -41,12 +53,18 @@ class EnrichDictionaryTranscriptions extends Command
                     ->find($word->en)?->transcription;
 
                 if ($transcription === null) {
+                    $word->forceFill([
+                        'transcription_checked_at' => now(),
+                    ])->save();
                     $missing++;
 
                     return;
                 }
 
-                $word->update(['transcription' => $transcription]);
+                $word->forceFill([
+                    'transcription' => $transcription,
+                    'transcription_checked_at' => now(),
+                ])->save();
                 $updated++;
             } catch (Throwable) {
                 $failed++;

@@ -61,6 +61,7 @@ class Word extends Model
             'grade' => 'integer',
             'ru_variants' => 'array',
             'en_variants' => 'array',
+            'transcription_checked_at' => 'datetime',
         ];
     }
 }

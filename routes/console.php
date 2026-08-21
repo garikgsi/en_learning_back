@@ -19,3 +19,8 @@ Schedule::command('exercises:create-weekly')
     ->at('00:00')
     ->withoutOverlapping()
     ->onOneServer();
+
+Schedule::command('dictionary:enrich-transcriptions')
+    ->everyTenMinutes()
+    ->withoutOverlapping()
+    ->onOneServer();
