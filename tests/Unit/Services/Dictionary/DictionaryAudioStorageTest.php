@@ -79,9 +79,42 @@ class DictionaryAudioStorageTest extends TestCase
         $first = $service->audio($request);
         $second = $service->audio($request);
 
-        $this->assertSame($first->path, $second->path);
-        Storage::disk('dictionary_audio')->assertExists($first->path);
+        $this->assertSame('generated audio', $first->contents);
+        $this->assertSame($first->contents, $second->contents);
+        $this->assertCount(
+            1,
+            Storage::disk('dictionary_audio')->allFiles(),
+        );
         $this->assertSame(1, $driver->requests);
+    }
+
+    public function test_speech_service_returns_audio_when_cache_is_unavailable(): void
+    {
+        $driver = $this->driver('provider-v1');
+        $storage = new class extends DictionaryAudioStorage
+        {
+            public function find(
+                SpeechRequest $request,
+                SpeechDriver $driver,
+            ): ?string {
+                throw new \RuntimeException('Audio cache cannot be read.');
+            }
+
+            public function put(
+                SpeechRequest $request,
+                SpeechDriver $driver,
+                SpeechResult $result,
+            ): string {
+                throw new \RuntimeException('Audio cache cannot be written.');
+            }
+        };
+        $service = new DictionarySpeechService($driver, $storage);
+
+        $audio = $service->audio(new SpeechRequest('store'));
+
+        $this->assertNotNull($audio);
+        $this->assertSame('audio', $audio->contents);
+        $this->assertSame('audio/mpeg', $audio->contentType);
     }
 
     private function driver(string $version): SpeechDriver

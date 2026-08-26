@@ -96,10 +96,9 @@ class WordVariantSynchronizer
      */
     private function split(string $value): array
     {
-        return array_values(array_filter(
-            array_map(trim(...), explode(',', $value)),
-            fn (string $variant): bool => $variant !== '',
-        ));
+        $value = trim($value);
+
+        return $value === '' ? [] : [$value];
     }
 
     private function normalize(string $value): string

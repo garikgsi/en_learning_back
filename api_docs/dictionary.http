@@ -44,6 +44,8 @@ Authorization: Bearer {{accessToken}}
 
 ### Save a manually reviewed dictionary word
 # The grade is assigned from the current user's available grade.
+# Russian and English values accept letters, parentheses, hyphens, spaces,
+# straight apostrophes, exclamation marks, and question marks.
 # @name storeDictionaryWord
 POST {{baseUrl}}/api/v1/dictionary/words
 Accept: application/json

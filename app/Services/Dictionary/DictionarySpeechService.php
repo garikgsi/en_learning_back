@@ -4,8 +4,9 @@ namespace App\Services\Dictionary;
 
 use App\Services\Dictionary\Contracts\SpeechDriver;
 use App\Services\Dictionary\Data\SpeechRequest;
-use App\Services\Dictionary\Data\StoredAudio;
+use App\Services\Dictionary\Data\SpeechResult;
 use App\Services\Dictionary\Storage\DictionaryAudioStorage;
+use Throwable;
 
 class DictionarySpeechService
 {
@@ -14,18 +15,22 @@ class DictionarySpeechService
         private readonly DictionaryAudioStorage $audioStorage,
     ) {}
 
-    public function audio(SpeechRequest $request): ?StoredAudio
+    public function audio(SpeechRequest $request): ?SpeechResult
     {
-        $storedPath = $this->audioStorage->find(
-            $request,
-            $this->speechDriver,
-        );
-
-        if ($storedPath !== null) {
-            return new StoredAudio(
-                $storedPath,
-                $request->format->contentType(),
+        try {
+            $storedPath = $this->audioStorage->find(
+                $request,
+                $this->speechDriver,
             );
+
+            if ($storedPath !== null) {
+                return new SpeechResult(
+                    $this->audioStorage->get($storedPath),
+                    $request->format->contentType(),
+                );
+            }
+        } catch (Throwable $exception) {
+            report($exception);
         }
 
         $audio = $this->speechDriver->audio($request);
@@ -34,12 +39,16 @@ class DictionarySpeechService
             return null;
         }
 
-        $storedPath = $this->audioStorage->put(
-            $request,
-            $this->speechDriver,
-            $audio,
-        );
+        try {
+            $this->audioStorage->put(
+                $request,
+                $this->speechDriver,
+                $audio,
+            );
+        } catch (Throwable $exception) {
+            report($exception);
+        }
 
-        return new StoredAudio($storedPath, $audio->contentType);
+        return $audio;
     }
 }

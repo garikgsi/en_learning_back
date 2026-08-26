@@ -1,5 +1,9 @@
 # Project instructions
 
+- Read-only checks of public production HTTP(S) endpoints are allowed. Never
+  connect to production through SSH, run console commands there, mutate
+  production data, or deploy.
+
 - Every API endpoint must be documented in `api_docs/*.http` using the JetBrains
   HTTP Client format.
 - Add or update the corresponding HTTP request in the same change that creates

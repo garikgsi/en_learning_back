@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Word;
+use App\Services\Dictionary\DictionaryWordSanitizer;
 use App\Services\WordVariantSynchronizer;
 use Illuminate\Database\Seeder;
 
@@ -65,7 +66,12 @@ class WordsSeeder extends Seeder
             ['ru' => 'удостоверение личности', 'en' => 'identity card', 'grade' => 5],
             ['ru' => 'идентификационный номер', 'en' => 'identification number', 'grade' => 5],
             ['ru' => 'вступать в клуб', 'en' => 'join a club', 'grade' => 5],
-            ['ru' => 'членский билет (карта)', 'en' => 'membership card', 'grade' => 5],
+            [
+                'ru' => 'членский билет',
+                'en' => 'membership card',
+                'ru_variants' => ['членская карта'],
+                'grade' => 5,
+            ],
             ['ru' => 'телефонный номер', 'en' => 'telephone number', 'grade' => 5],
             ['ru' => 'записываться в библиотеку', 'en' => 'register at the library', 'grade' => 5],
             ['ru' => 'возраст', 'en' => 'age', 'grade' => 5],
@@ -109,6 +115,20 @@ class WordsSeeder extends Seeder
             ...require database_path('seeders/data/words_grade_6.php'),
         ];
 
+        $sanitizer = app(DictionaryWordSanitizer::class);
+        $words = array_map(function (array $word) use ($sanitizer): array {
+            $clean = $sanitizer->sanitize($word);
+
+            return [
+                ...$word,
+                ...$clean,
+                'has_explicit_ru_variants' => array_key_exists('ru_variants', $word)
+                    || $clean['ru_variants'] !== [],
+                'has_explicit_en_variants' => array_key_exists('en_variants', $word)
+                    || $clean['en_variants'] !== [],
+            ];
+        }, $words);
+
         foreach ($words as $word) {
             $model = Word::query()->firstOrNew([
                 'ru' => $word['ru'],
@@ -121,5 +141,48 @@ class WordsSeeder extends Seeder
         }
 
         app(WordVariantSynchronizer::class)->synchronize();
+
+        foreach ($words as $word) {
+            $model = Word::query()
+                ->where('ru', $word['ru'])
+                ->where('en', $word['en'])
+                ->firstOrFail();
+            $model->fill([
+                'ru_variants' => $this->mergeVariants(
+                    $word['has_explicit_ru_variants'] ? [] : ($model->ru_variants ?? []),
+                    $word['ru_variants'],
+                    $word['ru'],
+                ),
+                'en_variants' => $this->mergeVariants(
+                    $word['has_explicit_en_variants'] ? [] : ($model->en_variants ?? []),
+                    $word['en_variants'],
+                    $word['en'],
+                ),
+            ])->save();
+        }
+    }
+
+    /**
+     * @param  list<string>  $inferred
+     * @param  list<string>  $explicit
+     * @return list<string>
+     */
+    private function mergeVariants(array $inferred, array $explicit, string $primary): array
+    {
+        $seen = [mb_strtolower($primary) => true];
+        $variants = [];
+
+        foreach ([...$inferred, ...$explicit] as $variant) {
+            $key = mb_strtolower($variant);
+
+            if (isset($seen[$key])) {
+                continue;
+            }
+
+            $seen[$key] = true;
+            $variants[] = $variant;
+        }
+
+        return $variants;
     }
 }

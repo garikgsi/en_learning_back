@@ -27,6 +27,11 @@ class DictionaryAudioStorage
         return $this->disk()->exists($path) ? $path : null;
     }
 
+    public function get(string $path): string
+    {
+        return $this->disk()->get($path);
+    }
+
     public function put(
         SpeechRequest $request,
         SpeechDriver $driver,

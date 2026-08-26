@@ -6,6 +6,8 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class DictionaryStoreRequest extends FormRequest
 {
+    private const WORD_PATTERN = "~^[\\p{L}() '!?-]+$~u";
+
     public function authorize(): bool
     {
         return true;
@@ -17,9 +19,33 @@ class DictionaryStoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'russian' => ['required', 'string', 'max:255'],
-            'english' => ['required', 'string', 'max:255'],
+            'russian' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:'.self::WORD_PATTERN,
+            ],
+            'english' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:'.self::WORD_PATTERN,
+            ],
             'transcription' => ['nullable', 'string', 'max:255'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        $message = 'Допустимы только буквы, круглые скобки, дефисы, пробелы, '
+            .'прямые апострофы, восклицательные и вопросительные знаки.';
+
+        return [
+            'russian.regex' => $message,
+            'english.regex' => $message,
         ];
     }
 

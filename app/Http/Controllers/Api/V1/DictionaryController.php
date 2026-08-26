@@ -17,8 +17,7 @@ use App\Services\Dictionary\DictionarySpeechService;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Storage;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Illuminate\Http\Response;
 use Throwable;
 
 class DictionaryController extends Controller
@@ -27,7 +26,7 @@ class DictionaryController extends Controller
         Word $word,
         DictionarySpeechService $speechService,
         PhoneticsDriver $phoneticsDriver,
-    ): StreamedResponse|JsonResponse {
+    ): Response|JsonResponse {
         if ($word->transcription === null) {
             $transcription = $phoneticsDriver
                 ->find($word->en)?->transcription;
@@ -46,13 +45,11 @@ class DictionaryController extends Controller
             ], 404);
         }
 
-        return Storage::disk((string) config(
-            'dictionary.audio.disk',
-            'dictionary_audio',
-        ))->response($audio->path, null, [
+        return response($audio->contents, 200, [
             'Content-Type' => $audio->contentType,
+            'Content-Length' => (string) strlen($audio->contents),
             'Cache-Control' => 'public, max-age=86400',
-        ], 'inline');
+        ]);
     }
 
     public function lookup(
@@ -144,7 +141,7 @@ class DictionaryController extends Controller
         }
 
         $validated = $request->validated();
-        $search = $validated['search'] ?? '';
+        $search = mb_strtolower($validated['search'] ?? '');
         $perPage = $validated['perPage'] ?? 30;
         $availableGrade = $user->grade;
 
@@ -188,11 +185,26 @@ class DictionaryController extends Controller
             $likeOperator = $query->getConnection()->getDriverName() === 'pgsql'
                 ? 'ILIKE'
                 : 'LIKE';
+            $variantSearch = $query->getConnection()->getDriverName() === 'pgsql'
+                ? "EXISTS (SELECT 1 FROM jsonb_array_elements_text(%s::jsonb) AS variant(value) WHERE variant.value {$likeOperator} ? ESCAPE '\\')"
+                : "EXISTS (SELECT 1 FROM json_each(%s) AS variant WHERE variant.value {$likeOperator} ? ESCAPE '\\')";
 
-            $query->where(function ($query) use ($likeOperator, $pattern): void {
+            $query->where(function ($query) use (
+                $likeOperator,
+                $pattern,
+                $variantSearch,
+            ): void {
                 $query
                     ->whereRaw("ru {$likeOperator} ? ESCAPE '\\'", [$pattern])
-                    ->orWhereRaw("en {$likeOperator} ? ESCAPE '\\'", [$pattern]);
+                    ->orWhereRaw("en {$likeOperator} ? ESCAPE '\\'", [$pattern])
+                    ->orWhereRaw(
+                        sprintf($variantSearch, 'ru_variants'),
+                        [$pattern],
+                    )
+                    ->orWhereRaw(
+                        sprintf($variantSearch, 'en_variants'),
+                        [$pattern],
+                    );
             });
         }
 

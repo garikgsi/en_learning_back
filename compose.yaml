@@ -18,6 +18,7 @@ x-php-service: &php-service
     XDEBUG_MODE: "off"
   volumes:
     - ./:/var/www/html
+    - dictionary_audio:/var/www/html/storage/app/dictionary/audio
   depends_on:
     postgres:
       condition: service_healthy
@@ -105,3 +106,4 @@ networks:
 
 volumes:
   postgres_data:
+  dictionary_audio:
