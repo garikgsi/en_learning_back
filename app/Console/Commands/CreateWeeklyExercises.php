@@ -8,8 +8,10 @@ use App\Models\ExerciseItem;
 use App\Models\ExerciseType;
 use App\Models\User;
 use App\Services\ExerciseService;
+use App\Services\Notifications\NotificationPublisher;
 use Carbon\CarbonInterface;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\Console\Command\Command as SymfonyCommand;
 
 class CreateWeeklyExercises extends Command
@@ -18,8 +20,10 @@ class CreateWeeklyExercises extends Command
 
     protected $description = 'Create weekly exercises from Monday-to-Thursday daily exercises';
 
-    public function handle(ExerciseService $exerciseService): int
-    {
+    public function handle(
+        ExerciseService $exerciseService,
+        NotificationPublisher $notificationPublisher,
+    ): int {
         $dailyType = ExerciseType::forCode(ExerciseTypeCode::daily);
         $weeklyType = ExerciseType::forCode(ExerciseTypeCode::weekly);
         $dueDate = today();
@@ -34,6 +38,7 @@ class CreateWeeklyExercises extends Command
                 $dailyType,
                 $dueDate,
                 $exerciseService,
+                $notificationPublisher,
                 $periodEnd,
                 $periodStart,
                 $weeklyType,
@@ -75,12 +80,22 @@ class CreateWeeklyExercises extends Command
                         continue;
                     }
 
-                    $exerciseService->createWithWords(
-                        $weeklyType,
-                        $user,
+                    DB::transaction(function () use (
                         $dueDate,
+                        $exerciseService,
+                        $notificationPublisher,
+                        $user,
+                        $weeklyType,
                         $wordIds,
-                    );
+                    ): void {
+                        $exercise = $exerciseService->createWithWords(
+                            $weeklyType,
+                            $user,
+                            $dueDate,
+                            $wordIds,
+                        );
+                        $notificationPublisher->exerciseCreated($exercise);
+                    });
                     $createdCount++;
                 }
             });

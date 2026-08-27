@@ -1,0 +1,35 @@
+### Register or refresh a notification device
+# installationId is generated once by the app installation and persisted locally.
+# Repeat this request when FCM returns a token or the token changes.
+# @name registerNotificationDevice
+PUT {{baseUrl}}/api/v1/notification-devices
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "installationId": "e2668dcb-a7cf-4de6-9d23-10e79bc96f32",
+    "pushToken": "fcm-registration-token-from-device",
+    "platform": "android",
+    "notificationsEnabled": true
+}
+
+### Incrementally synchronize notifications
+# Persist nextSequence locally and pass it as afterSequence on the next sync.
+# Repeat while hasMore is true.
+# @name syncNotifications
+GET {{baseUrl}}/api/v1/notifications?afterSequence=0&perPage=100
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+### Mark a notification as read
+# @name markNotificationRead
+PATCH {{baseUrl}}/api/v1/notifications/13c52fd9-4562-495c-86b7-177f19686ff6/read
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+### Remove this app installation from push delivery
+# @name removeNotificationDevice
+DELETE {{baseUrl}}/api/v1/notification-devices/e2668dcb-a7cf-4de6-9d23-10e79bc96f32
+Accept: application/json
+Authorization: Bearer {{accessToken}}

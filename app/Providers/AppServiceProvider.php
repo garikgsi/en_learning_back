@@ -11,6 +11,8 @@ use App\Services\Dictionary\Drivers\MerriamWebsterDriver;
 use App\Services\Dictionary\Drivers\Phonetics\FreeDictionaryPhoneticsDriver;
 use App\Services\Dictionary\Drivers\Speech\VoiceRssSpeechDriver;
 use App\Services\Dictionary\Drivers\Translation\MyMemoryTranslationDriver;
+use App\Services\Notifications\Contracts\PushGateway;
+use App\Services\Notifications\FirebasePushGateway;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
 use InvalidArgumentException;
@@ -22,6 +24,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->singleton(PushGateway::class, FirebasePushGateway::class);
         $this->app->singleton(MerriamWebsterDriver::class);
 
         $this->app->bind(

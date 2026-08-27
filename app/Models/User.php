@@ -48,6 +48,22 @@ class User extends Authenticatable
     }
 
     /**
+     * @return HasMany<UserNotification, $this>
+     */
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(UserNotification::class);
+    }
+
+    /**
+     * @return HasMany<UserDevice, $this>
+     */
+    public function devices(): HasMany
+    {
+        return $this->hasMany(UserDevice::class);
+    }
+
+    /**
      * @return HasMany<UserWordRepetition, $this>
      */
     public function wordRepetitions(): HasMany

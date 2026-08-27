@@ -46,6 +46,7 @@ class CreateDailyExercisesCommandTest extends TestCase
             ->assertSuccessful();
 
         $this->assertDatabaseCount('exercise', 2);
+        $this->assertDatabaseCount('user_notifications', 2);
 
         foreach ($users as $index => $user) {
             $exercise = Exercise::query()
@@ -60,10 +61,14 @@ class CreateDailyExercisesCommandTest extends TestCase
                 $exercise->dueDate->equalTo('2026-07-28 00:00:00'),
             );
             $this->assertCount($index === 0 ? 10 : 15, $exercise->items);
+            $this->assertDatabaseHas('user_notifications', [
+                'user_id' => $user->id,
+                'type' => 'exercise.created',
+            ]);
         }
     }
 
-    public function test_it_is_scheduled_at_midnight_from_monday_to_thursday(): void
+    public function test_it_is_scheduled_at_noon_in_moscow_from_monday_to_thursday(): void
     {
         $event = collect(app(Schedule::class)->events())
             ->first(
@@ -76,20 +81,20 @@ class CreateDailyExercisesCommandTest extends TestCase
         $this->assertNotNull($event);
 
         foreach ([
-            '2026-07-27 00:00:00',
-            '2026-07-28 00:00:00',
-            '2026-07-29 00:00:00',
-            '2026-07-30 00:00:00',
+            '2026-07-27 09:00:00 UTC',
+            '2026-07-28 09:00:00 UTC',
+            '2026-07-29 09:00:00 UTC',
+            '2026-07-30 09:00:00 UTC',
         ] as $scheduledDate) {
             $this->travelTo(CarbonImmutable::parse($scheduledDate));
             $this->assertTrue($event->isDue(app()));
         }
 
         foreach ([
-            '2026-07-31 00:00:00',
-            '2026-08-01 00:00:00',
-            '2026-08-02 00:00:00',
-            '2026-08-03 00:01:00',
+            '2026-07-31 09:00:00 UTC',
+            '2026-08-01 09:00:00 UTC',
+            '2026-08-02 09:00:00 UTC',
+            '2026-08-03 09:01:00 UTC',
         ] as $unscheduledDate) {
             $this->travelTo(CarbonImmutable::parse($unscheduledDate));
             $this->assertFalse($event->isDue(app()));

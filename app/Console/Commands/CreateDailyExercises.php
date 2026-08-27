@@ -7,8 +7,10 @@ use App\Models\Exercise;
 use App\Models\ExerciseType;
 use App\Models\User;
 use App\Services\ExerciseService;
+use App\Services\Notifications\NotificationPublisher;
 use DomainException;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\Console\Command\Command as SymfonyCommand;
 
 class CreateDailyExercises extends Command
@@ -21,8 +23,10 @@ class CreateDailyExercises extends Command
 
     protected $description = 'Create daily exercises for all users';
 
-    public function handle(ExerciseService $exerciseService): int
-    {
+    public function handle(
+        ExerciseService $exerciseService,
+        NotificationPublisher $notificationPublisher,
+    ): int {
         $type = ExerciseType::forCode(ExerciseTypeCode::daily);
         $dueDate = today();
         $createdCount = 0;
@@ -34,6 +38,7 @@ class CreateDailyExercises extends Command
             ->chunk(100, function ($users) use (
                 $dueDate,
                 $exerciseService,
+                $notificationPublisher,
                 $type,
                 &$createdCount,
                 &$skippedCount,
@@ -52,14 +57,23 @@ class CreateDailyExercises extends Command
                     }
 
                     try {
-                        $exerciseService->create(
+                        DB::transaction(function () use (
+                            $dueDate,
+                            $exerciseService,
+                            $notificationPublisher,
                             $type,
                             $user,
-                            $dueDate,
-                            $user->grade <= 5
-                                ? self::PRIMARY_SCHOOL_WORDS_COUNT
-                                : self::DEFAULT_WORDS_COUNT,
-                        );
+                        ): void {
+                            $exercise = $exerciseService->create(
+                                $type,
+                                $user,
+                                $dueDate,
+                                $user->grade <= 5
+                                    ? self::PRIMARY_SCHOOL_WORDS_COUNT
+                                    : self::DEFAULT_WORDS_COUNT,
+                            );
+                            $notificationPublisher->exerciseCreated($exercise);
+                        });
                         $createdCount++;
                     } catch (DomainException $exception) {
                         $this->warn(

@@ -40,6 +40,24 @@ services:
     networks:
       - backend
 
+  queue:
+    build:
+      context: .
+      args:
+        APP_UID: ${APP_UID:-1000}
+        APP_GID: ${APP_GID:-1000}
+    restart: unless-stopped
+    command: php artisan queue:work --sleep=3 --tries=3 --timeout=90
+    environment:
+      XDEBUG_MODE: "off"
+    volumes:
+      - ./:/var/www/html
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - backend
+
   nginx:
     image: nginx:1.29-alpine
     restart: unless-stopped

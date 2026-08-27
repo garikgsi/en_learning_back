@@ -67,6 +67,7 @@ class CreateWeeklyExercisesCommandTest extends TestCase
             ->keyBy('user_id');
 
         $this->assertCount(2, $weeklyExercises);
+        $this->assertDatabaseCount('user_notifications', 2);
         $this->assertEqualsCanonicalizing(
             [$words[0]->id, $words[1]->id, $words[2]->id],
             $weeklyExercises[$firstUser->id]
@@ -88,7 +89,7 @@ class CreateWeeklyExercisesCommandTest extends TestCase
         );
     }
 
-    public function test_it_is_scheduled_at_midnight_each_friday(): void
+    public function test_it_is_scheduled_at_noon_in_moscow_each_friday(): void
     {
         $event = collect(app(Schedule::class)->events())
             ->first(
@@ -100,13 +101,13 @@ class CreateWeeklyExercisesCommandTest extends TestCase
 
         $this->assertNotNull($event);
 
-        $this->travelTo(CarbonImmutable::parse('2026-07-31 00:00:00'));
+        $this->travelTo(CarbonImmutable::parse('2026-07-31 09:00:00 UTC'));
         $this->assertTrue($event->isDue(app()));
 
-        $this->travelTo(CarbonImmutable::parse('2026-07-31 00:01:00'));
+        $this->travelTo(CarbonImmutable::parse('2026-07-31 09:01:00 UTC'));
         $this->assertFalse($event->isDue(app()));
 
-        $this->travelTo(CarbonImmutable::parse('2026-07-30 00:00:00'));
+        $this->travelTo(CarbonImmutable::parse('2026-07-30 09:00:00 UTC'));
         $this->assertFalse($event->isDue(app()));
     }
 

@@ -7,8 +7,10 @@ use App\Http\Controllers\Api\V1\Auth\RefreshTokenController;
 use App\Http\Controllers\Api\V1\Auth\RegisterController;
 use App\Http\Controllers\Api\V1\DictionaryController;
 use App\Http\Controllers\Api\V1\ExerciseController;
+use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\UpdatePinController;
 use App\Http\Controllers\Api\V1\UserController;
+use App\Http\Controllers\Api\V1\UserDeviceController;
 use App\Http\Controllers\Api\V1\UserWordRepetitionController;
 use Illuminate\Support\Facades\Route;
 
@@ -38,6 +40,19 @@ Route::prefix('v1')->group(function (): void {
             '/repetition-list/words',
             UserWordRepetitionController::class,
         );
+        Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::patch(
+            '/notifications/{notification}/read',
+            [NotificationController::class, 'markRead'],
+        )->whereUuid('notification');
+        Route::put(
+            '/notification-devices',
+            [UserDeviceController::class, 'store'],
+        );
+        Route::delete(
+            '/notification-devices/{installationId}',
+            [UserDeviceController::class, 'destroy'],
+        )->whereUuid('installationId');
         Route::get('/exercises', [ExerciseController::class, 'index']);
         Route::post('/exercises', [ExerciseController::class, 'store']);
         Route::get('/exercises/current', [ExerciseController::class, 'current']);

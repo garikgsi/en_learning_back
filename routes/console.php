@@ -9,14 +9,22 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('exercises:create-daily')
-    ->dailyAt('00:00')
+    ->dailyAt('12:00')
     ->days([1, 2, 3, 4])
+    ->timezone('Europe/Moscow')
     ->withoutOverlapping()
     ->onOneServer();
 
 Schedule::command('exercises:create-weekly')
     ->fridays()
-    ->at('00:00')
+    ->at('12:00')
+    ->timezone('Europe/Moscow')
+    ->withoutOverlapping()
+    ->onOneServer();
+
+Schedule::command('exercises:send-reminders')
+    ->dailyAt('18:00')
+    ->timezone('Europe/Moscow')
     ->withoutOverlapping()
     ->onOneServer();
 
