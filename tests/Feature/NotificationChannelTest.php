@@ -3,27 +3,30 @@
 namespace Tests\Feature;
 
 use App\Enums\ExerciseTypeCode;
-use App\Jobs\SendUserNotificationPush;
 use App\Models\Exercise;
-use App\Models\ExerciseType;
 use App\Models\User;
 use App\Models\UserDevice;
+use App\Notifications\AppReleaseAvailable;
+use App\Notifications\Channels\FcmChannel;
+use App\Notifications\DeliverStoredNotificationPush;
+use App\Notifications\ExerciseCreated;
+use App\Notifications\ExerciseReminder;
 use App\Services\Notifications\Contracts\PushGateway;
 use App\Services\Notifications\Exceptions\InvalidPushTokenException;
-use App\Services\Notifications\NotificationPublisher;
 use Carbon\CarbonImmutable;
 use Database\Seeders\ExerciseTypesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Notifications\SendQueuedNotifications;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Mockery;
 use Tests\TestCase;
 
-class NotificationPublisherTest extends TestCase
+class NotificationChannelTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_publisher_persists_notification_before_queueing_push(): void
+    public function test_laravel_notification_persists_journal_before_queueing_fcm_channel(): void
     {
         config()->set('notifications.push.enabled', true);
         Queue::fake();
@@ -32,30 +35,27 @@ class NotificationPublisherTest extends TestCase
         $device = $this->createDevice($user);
         $exercise = Exercise::query()->create([
             'user_id' => $user->id,
-            'type_id' => ExerciseType::forCode(ExerciseTypeCode::daily)->id,
+            'type_id' => ExerciseTypeCode::daily->value,
             'dueDate' => now(),
         ]);
 
-        $notification = app(NotificationPublisher::class)
-            ->exerciseCreated($exercise);
+        $user->notify(new ExerciseCreated($exercise));
 
-        $this->assertDatabaseHas('user_notifications', [
-            'id' => $notification->id,
-            'user_id' => $user->id,
-            'type' => 'exercise.created',
-        ]);
+        $storedNotification = $user->notifications()->sole();
+        $this->assertSame('exercise.created', $storedNotification->type);
         Queue::assertPushed(
-            SendUserNotificationPush::class,
-            fn (SendUserNotificationPush $job): bool => $job->notificationId === $notification->id
-                && $job->deviceId === $device->id,
+            SendQueuedNotifications::class,
+            fn (SendQueuedNotifications $job): bool => $job->notification instanceof DeliverStoredNotificationPush
+                && $job->notification->notificationId === $storedNotification->id
+                && $job->notifiables->contains($device),
         );
     }
 
-    public function test_job_disables_an_unregistered_push_token(): void
+    public function test_fcm_channel_disables_an_unregistered_push_token(): void
     {
         $user = User::factory()->create();
         $device = $this->createDevice($user);
-        $notification = $user->notifications()->create([
+        $storedNotification = $user->notifications()->create([
             'type' => 'exercise.created',
             'title' => 'Новое упражнение',
             'body' => 'Упражнение готово',
@@ -66,10 +66,10 @@ class NotificationPublisherTest extends TestCase
             ->once()
             ->andThrow(new InvalidPushTokenException);
 
-        (new SendUserNotificationPush(
-            $notification->id,
-            $device->id,
-        ))->handle($gateway);
+        (new FcmChannel($gateway))->send(
+            $device,
+            new DeliverStoredNotificationPush($storedNotification->id),
+        );
 
         $this->assertFalse($device->refresh()->notifications_enabled);
     }
@@ -83,10 +83,10 @@ class NotificationPublisherTest extends TestCase
             'type_id' => ExerciseTypeCode::user->value,
             'dueDate' => now(),
         ]);
-        $publisher = app(NotificationPublisher::class);
 
-        $this->assertNull($publisher->exerciseCreated($exercise));
-        $this->assertNull($publisher->exerciseReminder($exercise));
+        $user->notify(new ExerciseCreated($exercise));
+        $user->notify(new ExerciseReminder($exercise));
+
         $this->assertDatabaseCount('user_notifications', 0);
     }
 
@@ -99,13 +99,10 @@ class NotificationPublisherTest extends TestCase
             'type_id' => ExerciseTypeCode::daily->value,
             'dueDate' => now(),
         ]);
-        $publisher = app(NotificationPublisher::class);
 
-        $first = $publisher->exerciseReminder($exercise);
-        $second = $publisher->exerciseReminder($exercise);
+        $user->notify(new ExerciseReminder($exercise));
+        $user->notify(new ExerciseReminder($exercise));
 
-        $this->assertNotNull($first);
-        $this->assertTrue($first->is($second));
         $this->assertDatabaseCount('user_notifications', 1);
     }
 
@@ -117,13 +114,12 @@ class NotificationPublisherTest extends TestCase
         $user = User::factory()->create();
         $device = $this->createDevice($user);
 
-        $notification = app(NotificationPublisher::class)
-            ->appReleaseAvailable($user, '0.1.0-rc.15');
+        $user->notify(new AppReleaseAvailable('0.1.0-rc.15'));
 
         Queue::assertPushed(
-            SendUserNotificationPush::class,
-            fn (SendUserNotificationPush $job): bool => $job->notificationId === $notification->id
-                && $job->deviceId === $device->id
+            SendQueuedNotifications::class,
+            fn (SendQueuedNotifications $job): bool => $job->notification instanceof DeliverStoredNotificationPush
+                && $job->notifiables->contains($device)
                 && CarbonImmutable::instance($job->delay)
                     ->equalTo('2026-07-31 09:00:00 UTC'),
         );
@@ -137,13 +133,12 @@ class NotificationPublisherTest extends TestCase
         $user = User::factory()->create();
         $device = $this->createDevice($user);
 
-        $notification = app(NotificationPublisher::class)
-            ->appReleaseAvailable($user, '0.1.0-rc.15');
+        $user->notify(new AppReleaseAvailable('0.1.0-rc.15'));
 
         Queue::assertPushed(
-            SendUserNotificationPush::class,
-            fn (SendUserNotificationPush $job): bool => $job->notificationId === $notification->id
-                && $job->deviceId === $device->id
+            SendQueuedNotifications::class,
+            fn (SendQueuedNotifications $job): bool => $job->notification instanceof DeliverStoredNotificationPush
+                && $job->notifiables->contains($device)
                 && CarbonImmutable::instance($job->delay)
                     ->equalTo('2026-08-01 09:00:00 UTC'),
         );

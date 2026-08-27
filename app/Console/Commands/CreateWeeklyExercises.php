@@ -7,8 +7,8 @@ use App\Models\Exercise;
 use App\Models\ExerciseItem;
 use App\Models\ExerciseType;
 use App\Models\User;
+use App\Notifications\ExerciseCreated;
 use App\Services\ExerciseService;
-use App\Services\Notifications\NotificationPublisher;
 use Carbon\CarbonInterface;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +22,6 @@ class CreateWeeklyExercises extends Command
 
     public function handle(
         ExerciseService $exerciseService,
-        NotificationPublisher $notificationPublisher,
     ): int {
         $dailyType = ExerciseType::forCode(ExerciseTypeCode::daily);
         $weeklyType = ExerciseType::forCode(ExerciseTypeCode::weekly);
@@ -38,7 +37,6 @@ class CreateWeeklyExercises extends Command
                 $dailyType,
                 $dueDate,
                 $exerciseService,
-                $notificationPublisher,
                 $periodEnd,
                 $periodStart,
                 $weeklyType,
@@ -83,7 +81,6 @@ class CreateWeeklyExercises extends Command
                     DB::transaction(function () use (
                         $dueDate,
                         $exerciseService,
-                        $notificationPublisher,
                         $user,
                         $weeklyType,
                         $wordIds,
@@ -94,7 +91,7 @@ class CreateWeeklyExercises extends Command
                             $dueDate,
                             $wordIds,
                         );
-                        $notificationPublisher->exerciseCreated($exercise);
+                        $user->notify(new ExerciseCreated($exercise));
                     });
                     $createdCount++;
                 }

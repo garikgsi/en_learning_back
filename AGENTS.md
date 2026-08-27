@@ -16,6 +16,9 @@
   referenced parent row must be rejected while related rows exist.
 - Document every computed Eloquent model property in the model PHPDoc using
   `@property-read` so it is available in IDE autocomplete.
+- Prefer Laravel's built-in framework features and extension points over
+  custom infrastructure. For notifications, use Laravel Notifications and
+  implement custom channels only where the framework has no suitable channel.
 
 ## Testing and formatting
 

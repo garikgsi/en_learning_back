@@ -4,7 +4,8 @@ namespace App\Console\Commands;
 
 use App\Enums\ExerciseTypeCode;
 use App\Models\Exercise;
-use App\Services\Notifications\NotificationPublisher;
+use App\Models\UserNotification;
+use App\Notifications\ExerciseReminder;
 use Illuminate\Console\Command;
 use Symfony\Component\Console\Command\Command as SymfonyCommand;
 
@@ -14,7 +15,7 @@ class SendExerciseReminders extends Command
 
     protected $description = 'Notify users about uncompleted daily and weekly exercises';
 
-    public function handle(NotificationPublisher $notificationPublisher): int
+    public function handle(): int
     {
         $remindedCount = 0;
 
@@ -26,16 +27,22 @@ class SendExerciseReminders extends Command
             ->whereBetween('dueDate', [today(), today()->endOfDay()])
             ->whereDoesntHave('completions')
             ->orderBy('id')
-            ->chunkById(100, function ($exercises) use (
-                $notificationPublisher,
-                &$remindedCount,
-            ): void {
+            ->with('user')
+            ->chunkById(100, function ($exercises) use (&$remindedCount): void {
                 foreach ($exercises as $exercise) {
-                    if ($notificationPublisher
-                        ->exerciseReminder($exercise)
-                        ?->wasRecentlyCreated) {
-                        $remindedCount++;
+                    $notification = new ExerciseReminder($exercise);
+                    $alreadyPublished = UserNotification::query()
+                        ->where(
+                            'deduplication_key',
+                            $notification->deduplicationKey($exercise->user),
+                        )->exists();
+
+                    if ($alreadyPublished) {
+                        continue;
                     }
+
+                    $exercise->user->notify($notification);
+                    $remindedCount++;
                 }
             });
 

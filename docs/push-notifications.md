@@ -4,6 +4,12 @@ The notification record stored in `user_notifications` is the source of truth.
 Firebase Cloud Messaging (FCM) is only a delivery signal that prompts the app
 to synchronize the server journal into IndexedDB.
 
+Domain events are implemented with Laravel Notifications. The synchronous
+custom journal channel stores cursor-compatible records in
+`user_notifications`; it then sends a queued Laravel notification to each
+enabled device through the custom FCM channel. No application-specific queue
+job or notification dispatcher is used.
+
 Daily exercises are created Monday through Thursday at 12:00 Moscow time;
 weekly exercises are created each Friday at 12:00 Moscow time. Their first
 notification is published immediately after creation. At 18:00 Moscow time,

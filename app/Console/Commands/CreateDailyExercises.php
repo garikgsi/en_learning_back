@@ -6,8 +6,8 @@ use App\Enums\ExerciseTypeCode;
 use App\Models\Exercise;
 use App\Models\ExerciseType;
 use App\Models\User;
+use App\Notifications\ExerciseCreated;
 use App\Services\ExerciseService;
-use App\Services\Notifications\NotificationPublisher;
 use DomainException;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +25,6 @@ class CreateDailyExercises extends Command
 
     public function handle(
         ExerciseService $exerciseService,
-        NotificationPublisher $notificationPublisher,
     ): int {
         $type = ExerciseType::forCode(ExerciseTypeCode::daily);
         $dueDate = today();
@@ -38,7 +37,6 @@ class CreateDailyExercises extends Command
             ->chunk(100, function ($users) use (
                 $dueDate,
                 $exerciseService,
-                $notificationPublisher,
                 $type,
                 &$createdCount,
                 &$skippedCount,
@@ -60,7 +58,6 @@ class CreateDailyExercises extends Command
                         DB::transaction(function () use (
                             $dueDate,
                             $exerciseService,
-                            $notificationPublisher,
                             $type,
                             $user,
                         ): void {
@@ -72,7 +69,7 @@ class CreateDailyExercises extends Command
                                     ? self::PRIMARY_SCHOOL_WORDS_COUNT
                                     : self::DEFAULT_WORDS_COUNT,
                             );
-                            $notificationPublisher->exerciseCreated($exercise);
+                            $user->notify(new ExerciseCreated($exercise));
                         });
                         $createdCount++;
                     } catch (DomainException $exception) {

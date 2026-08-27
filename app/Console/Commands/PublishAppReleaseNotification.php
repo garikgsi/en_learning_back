@@ -3,7 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
-use App\Services\Notifications\NotificationPublisher;
+use App\Models\UserNotification;
+use App\Notifications\AppReleaseAvailable;
 use Illuminate\Console\Command;
 use Symfony\Component\Console\Command\Command as SymfonyCommand;
 
@@ -13,7 +14,7 @@ class PublishAppReleaseNotification extends Command
 
     protected $description = 'Notify all users about a new Android app release';
 
-    public function handle(NotificationPublisher $notificationPublisher): int
+    public function handle(): int
     {
         $version = (string) $this->argument('version');
 
@@ -27,18 +28,21 @@ class PublishAppReleaseNotification extends Command
 
         User::query()
             ->orderBy('id')
-            ->chunk(100, function ($users) use (
-                $notificationPublisher,
-                $version,
-                &$publishedCount,
-            ): void {
+            ->chunk(100, function ($users) use ($version, &$publishedCount): void {
                 foreach ($users as $user) {
-                    $notification = $notificationPublisher
-                        ->appReleaseAvailable($user, $version);
+                    $notification = new AppReleaseAvailable($version);
+                    $alreadyPublished = UserNotification::query()
+                        ->where(
+                            'deduplication_key',
+                            $notification->deduplicationKey($user),
+                        )->exists();
 
-                    if ($notification->wasRecentlyCreated) {
-                        $publishedCount++;
+                    if ($alreadyPublished) {
+                        continue;
                     }
+
+                    $user->notify($notification);
+                    $publishedCount++;
                 }
             });
 
