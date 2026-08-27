@@ -28,14 +28,14 @@ class WordVariantSynchronizerTest extends TestCase
         $this->assertSame(['store'], $keep->fresh()->en_variants);
     }
 
-    public function test_it_flattens_existing_comma_separated_values_and_removes_duplicates(): void
+    public function test_it_treats_stored_dictionary_values_as_atomic(): void
     {
         $word = $this->word('пирог, торт', 'cake');
         $this->word('торт,пирожное', 'cake');
 
         app(WordVariantSynchronizer::class)->synchronize();
 
-        $this->assertSame(['пирожное'], $word->fresh()->ru_variants);
+        $this->assertSame(['торт,пирожное'], $word->fresh()->ru_variants);
     }
 
     private function word(string $ru, string $en): Word
