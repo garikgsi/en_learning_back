@@ -31,6 +31,10 @@ class CreateDailyExercisesCommandTest extends TestCase
         $users[1]->info()->create([
             'first_grade_year' => now()->year - 6,
         ]);
+        $testUser = User::factory()->create(['is_test' => true]);
+        $testUser->info()->create([
+            'first_grade_year' => now()->year - 5,
+        ]);
 
         foreach (range(1, 20) as $number) {
             Word::query()->create([
@@ -47,6 +51,9 @@ class CreateDailyExercisesCommandTest extends TestCase
 
         $this->assertDatabaseCount('exercise', 2);
         $this->assertDatabaseCount('user_notifications', 2);
+        $this->assertDatabaseMissing('exercise', [
+            'user_id' => $testUser->id,
+        ]);
 
         foreach ($users as $index => $user) {
             $exercise = Exercise::query()

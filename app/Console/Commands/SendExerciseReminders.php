@@ -26,6 +26,7 @@ class SendExerciseReminders extends Command
             ])
             ->whereBetween('dueDate', [today(), today()->endOfDay()])
             ->whereDoesntHave('completions')
+            ->whereHas('user', fn ($query) => $query->nonTest())
             ->orderBy('id')
             ->with('user')
             ->chunkById(100, function ($exercises) use (&$remindedCount): void {

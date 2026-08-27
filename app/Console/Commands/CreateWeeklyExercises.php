@@ -32,6 +32,7 @@ class CreateWeeklyExercises extends Command
         $skippedCount = 0;
 
         User::query()
+            ->nonTest()
             ->orderBy('id')
             ->chunk(100, function ($users) use (
                 $dailyType,

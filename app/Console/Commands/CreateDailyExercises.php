@@ -32,6 +32,7 @@ class CreateDailyExercises extends Command
         $skippedCount = 0;
 
         User::query()
+            ->nonTest()
             ->with('info')
             ->orderBy('id')
             ->chunk(100, function ($users) use (

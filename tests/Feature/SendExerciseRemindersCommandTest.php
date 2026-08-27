@@ -31,6 +31,12 @@ class SendExerciseRemindersCommandTest extends TestCase
             ExerciseTypeCode::daily,
             today()->subDay(),
         );
+        $testUser = User::factory()->create(['is_test' => true]);
+        $testExercise = $this->createExercise(
+            $testUser,
+            ExerciseTypeCode::daily,
+            today(),
+        );
 
         $this->artisan('exercises:send-reminders')
             ->expectsOutput('Exercise reminders created: 2.')
@@ -47,6 +53,9 @@ class SendExerciseRemindersCommandTest extends TestCase
         $this->assertDatabaseHas('user_notifications', [
             'type' => 'exercise.reminder',
             'deduplication_key' => "exercise:{$weekly->id}:reminder",
+        ]);
+        $this->assertDatabaseMissing('user_notifications', [
+            'deduplication_key' => "exercise:{$testExercise->id}:reminder",
         ]);
     }
 

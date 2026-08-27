@@ -24,7 +24,7 @@ class CreateWeeklyExercisesCommandTest extends TestCase
 
         $firstUser = User::factory()->create();
         $secondUser = User::factory()->create();
-        User::factory()->create();
+        $testUser = User::factory()->create(['is_test' => true]);
         $words = collect(range(1, 4))->map(
             fn (int $number): Word => Word::query()->create([
                 'ru' => "слово {$number}",
@@ -53,6 +53,11 @@ class CreateWeeklyExercisesCommandTest extends TestCase
             '2026-07-28 00:00:00',
             [$words[3]->id],
         );
+        $this->createDailyExercise(
+            $testUser,
+            '2026-07-29 00:00:00',
+            [$words[0]->id],
+        );
 
         $this->artisan('exercises:create-weekly')
             ->assertSuccessful();
@@ -68,6 +73,7 @@ class CreateWeeklyExercisesCommandTest extends TestCase
 
         $this->assertCount(2, $weeklyExercises);
         $this->assertDatabaseCount('user_notifications', 2);
+        $this->assertArrayNotHasKey($testUser->id, $weeklyExercises);
         $this->assertEqualsCanonicalizing(
             [$words[0]->id, $words[1]->id, $words[2]->id],
             $weeklyExercises[$firstUser->id]

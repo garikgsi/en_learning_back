@@ -13,6 +13,7 @@ class PublishAppReleaseNotificationCommandTest extends TestCase
     public function test_it_publishes_one_notification_per_user_and_version(): void
     {
         $users = User::factory()->count(2)->create();
+        $testUser = User::factory()->create(['is_test' => true]);
 
         $this->artisan('notifications:publish-release', [
             'version' => '0.1.0-rc.15',
@@ -32,5 +33,9 @@ class PublishAppReleaseNotificationCommandTest extends TestCase
                 'deduplication_key' => "app-release:0.1.0-rc.15:user:{$user->id}",
             ]);
         }
+
+        $this->assertDatabaseMissing('user_notifications', [
+            'user_id' => $testUser->id,
+        ]);
     }
 }

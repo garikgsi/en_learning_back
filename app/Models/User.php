@@ -5,6 +5,8 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,6 +17,7 @@ use Illuminate\Notifications\Notifiable;
 
 /**
  * @property-read int|null $grade
+ * @property bool $is_test
  */
 #[Fillable(['phone', 'name', 'avatar_path'])]
 #[Hidden(['pin_hash'])]
@@ -22,6 +25,12 @@ class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasUuids, Notifiable;
+
+    #[Scope]
+    protected function nonTest(Builder $query): void
+    {
+        $query->where('is_test', false);
+    }
 
     /**
      * @return HasMany<AuthSession, $this>
@@ -81,5 +90,15 @@ class User extends Authenticatable
                 ? null
                 : max(0, now()->year - $this->info->first_grade_year),
         );
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'is_test' => 'boolean',
+        ];
     }
 }

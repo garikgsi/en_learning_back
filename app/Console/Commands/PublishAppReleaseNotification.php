@@ -27,6 +27,7 @@ class PublishAppReleaseNotification extends Command
         $publishedCount = 0;
 
         User::query()
+            ->nonTest()
             ->orderBy('id')
             ->chunk(100, function ($users) use ($version, &$publishedCount): void {
                 foreach ($users as $user) {

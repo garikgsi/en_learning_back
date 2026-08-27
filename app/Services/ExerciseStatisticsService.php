@@ -110,11 +110,16 @@ class ExerciseStatisticsService
         $queryDateFrom = $weekDateFrom->min($monthDateFrom);
 
         $users = User::query()
+            ->nonTest()
             ->orderBy('name')
             ->orderBy('id')
             ->get(['id', 'name']);
         $completions = ExerciseComplete::query()
             ->whereBetween('completed_at', [$queryDateFrom, $dateTo])
+            ->whereHas(
+                'exercise.user',
+                fn ($query) => $query->nonTest(),
+            )
             ->with([
                 'exercise:id,user_id,type_id',
                 'itemResults.exerciseItem:id,word_id',

@@ -150,6 +150,10 @@ class ExerciseStatisticsControllerTest extends TestCase
         $alice = User::factory()->create(['name' => 'Alice']);
         $bob = User::factory()->create(['name' => 'Bob']);
         $charlie = User::factory()->create(['name' => 'Charlie']);
+        $testUser = User::factory()->create([
+            'name' => 'Test User',
+            'is_test' => true,
+        ]);
         $dailyType = ExerciseType::query()->create([
             'name' => 'daily-chart',
             'title' => 'Daily chart exercise',
@@ -214,6 +218,17 @@ class ExerciseStatisticsControllerTest extends TestCase
             '2026-07-13T10:00:00Z',
             [[0, 0]],
         );
+        $testExercise = $this->createExercise(
+            $testUser,
+            $dailyType,
+            '2026-07-14T09:00:00Z',
+            1,
+        );
+        $this->createBidirectionalCompletion(
+            $testExercise,
+            '2026-07-14T10:00:00Z',
+            [[0, 0]],
+        );
 
         $response = $this->withToken($this->accessToken($alice))
             ->getJson(
@@ -244,6 +259,9 @@ class ExerciseStatisticsControllerTest extends TestCase
             ->keyBy('userId');
         $month = collect($response->json('charts.month.users'))
             ->keyBy('userId');
+
+        $this->assertArrayNotHasKey($testUser->id, $week);
+        $this->assertArrayNotHasKey($testUser->id, $month);
 
         $this->assertSame([
             'userId' => $alice->id,
