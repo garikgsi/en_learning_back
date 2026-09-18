@@ -18,12 +18,14 @@ class RegisterControllerTest extends TestCase
             'phone' => '8 (926) 226-03-86',
             'pinCode' => '1234',
             'firstGradeYear' => 2010,
+            'role' => 'admin',
         ]);
 
         $response
             ->assertCreated()
             ->assertJsonPath('user.name', 'Ivan')
             ->assertJsonPath('user.phone', '+79262260386')
+            ->assertJsonPath('user.role', 'user')
             ->assertJsonStructure([
                 'user',
                 'accessToken',
@@ -39,6 +41,7 @@ class RegisterControllerTest extends TestCase
 
         $this->assertTrue(app(PinHasher::class)->check('1234', $user->pin_hash));
         $this->assertSame(2010, $user->info()->sole()->first_grade_year);
+        $this->assertFalse($user->isAdmin());
     }
 
     public function test_registration_rejects_duplicate_phone(): void

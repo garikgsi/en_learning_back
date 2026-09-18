@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\UserRole;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -18,6 +19,9 @@ use Illuminate\Notifications\Notifiable;
 /**
  * @property-read int|null $grade
  * @property bool $is_test
+ * @property UserRole $role
+ * @property-read int|string|null $enc_balance
+ * @property-read int|string|null $enc_reserved
  */
 #[Fillable(['phone', 'name', 'avatar_path'])]
 #[Hidden(['pin_hash'])]
@@ -25,6 +29,15 @@ class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasUuids, Notifiable;
+
+    protected $attributes = [
+        'role' => 'user',
+    ];
+
+    public function isAdmin(): bool
+    {
+        return $this->role === UserRole::admin;
+    }
 
     #[Scope]
     protected function nonTest(Builder $query): void
@@ -54,6 +67,18 @@ class User extends Authenticatable
     public function exercises(): HasMany
     {
         return $this->hasMany(Exercise::class);
+    }
+
+    /** @return HasMany<EnCoinEntry, $this> */
+    public function enCoinEntries(): HasMany
+    {
+        return $this->hasMany(EnCoinEntry::class);
+    }
+
+    /** @return HasMany<MonetizationRequest, $this> */
+    public function monetizationRequests(): HasMany
+    {
+        return $this->hasMany(MonetizationRequest::class);
     }
 
     /**
@@ -99,6 +124,7 @@ class User extends Authenticatable
     {
         return [
             'is_test' => 'boolean',
+            'role' => UserRole::class,
         ];
     }
 }

@@ -1,5 +1,6 @@
 ### Get a page of words available to the current user
-# Words are limited by: grade <= current year - first_grade_year.
+# Ordinary users: grade <= current year - first_grade_year.
+# Administrators see every word, even without user info; availableGrade is null.
 # Response items include repeatCount, successfulRepeatCount and
 # failedRepeatCount calculated only for the authenticated user.
 # @name getDictionary
@@ -11,9 +12,15 @@ Authorization: Bearer {{accessToken}}
 # Fetch every page on the first request. Pass latestCreatedAt from the previous
 # response to receive only words created later. Pass revision from the previous
 # response so the server can request a full refresh after dictionary changes.
+# Pass latestUpdatedAt as updatedAfter to include edited words, including
+# translations changed by administrators. The update boundary is inclusive.
+# For administrators availableGrade is null; switching scope requests a full sync.
+# revision changes automatically after admin edits, but only for grades that
+# include the edited word (and for admins). A changed revision forces a full
+# replacement of the cache, including clients with no updatedAfter support.
 # Search and display pagination are performed from the local cache.
 # @name syncDictionary
-GET {{baseUrl}}/api/v1/dictionary/sync?page=1&perPage=500&createdAfter=2026-08-14T09:30:00.000Z&availableGrade=5&revision=4
+GET {{baseUrl}}/api/v1/dictionary/sync?page=1&perPage=500&createdAfter=2026-08-14T09:30:00.000Z&updatedAfter=2026-08-14T09:30:00.000Z&availableGrade=5&revision=4
 Accept: application/json
 Authorization: Bearer {{accessToken}}
 
@@ -66,3 +73,30 @@ Authorization: Bearer {{accessToken}}
 # @name getDictionaryWordAudio
 GET {{baseUrl}}/api/v1/dictionary/words/42/audio
 Accept: audio/mpeg
+
+### Open an existing dictionary word in the admin editor
+# Administrators only (403 for ordinary users). Returns { "item": ... } with
+# primary values, translation variants, transcription and repetition counters.
+# @name getAdminDictionaryWord
+GET {{baseUrl}}/api/v1/dictionary/words/42
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+### Update dictionary values as an administrator
+# Administrators only. Both variant arrays must be supplied, including empty [].
+# At most 50 variants per language; no empty or duplicate variants.
+# The word id, grade and existing exercise/repetition relations are preserved.
+# Transcription is read-only: supplying it returns 422.
+# Changing English clears the previous transcription for automatic regeneration.
+# @name updateAdminDictionaryWord
+PATCH {{baseUrl}}/api/v1/dictionary/words/42
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "russian": "магазин",
+    "english": "store",
+    "russianVariants": ["лавка"],
+    "englishVariants": ["shop"]
+}

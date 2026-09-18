@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\UserRole;
 use App\Models\AuthSession;
 use App\Models\User;
 use App\Services\Auth\AuthTokenService;
@@ -16,6 +17,7 @@ class AuthControllerTest extends TestCase
     {
         $user = User::factory()->create([
             'phone' => '+79991234567',
+            'role' => UserRole::admin,
         ]);
 
         $response = $this->postJson('/api/v1/auth/login', [
@@ -26,6 +28,7 @@ class AuthControllerTest extends TestCase
         $accessToken = $response
             ->assertOk()
             ->assertJsonPath('user.id', $user->id)
+            ->assertJsonPath('user.role', 'admin')
             ->assertJsonPath('tokenType', 'Bearer')
             ->assertJsonPath('expiresIn', 900)
             ->assertJsonPath('refreshExpiresIn', 2_592_000)

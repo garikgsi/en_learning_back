@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Observers\WordObserver;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
@@ -21,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
     'transcription',
     'grade',
 ])]
+#[ObservedBy(WordObserver::class)]
 class Word extends Model
 {
     /**

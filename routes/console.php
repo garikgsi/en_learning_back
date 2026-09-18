@@ -32,3 +32,9 @@ Schedule::command('dictionary:enrich-transcriptions')
     ->everyTenMinutes()
     ->withoutOverlapping()
     ->onOneServer();
+
+Schedule::command('encoin:award-weekly-bonuses')
+    ->dailyAt('00:10')
+    ->timezone('Europe/Moscow')
+    ->withoutOverlapping()
+    ->onOneServer();

@@ -7,21 +7,63 @@ use App\Http\Requests\Api\V1\DictionaryIndexRequest;
 use App\Http\Requests\Api\V1\DictionaryLookupRequest;
 use App\Http\Requests\Api\V1\DictionaryStoreRequest;
 use App\Http\Requests\Api\V1\DictionarySyncRequest;
+use App\Http\Requests\Api\V1\DictionaryUpdateRequest;
 use App\Http\Resources\Api\V1\WordResource;
 use App\Models\User;
 use App\Models\Word;
 use App\Services\Dictionary\Contracts\PhoneticsDriver;
 use App\Services\Dictionary\Data\SpeechRequest;
 use App\Services\Dictionary\DictionaryLookupService;
+use App\Services\Dictionary\DictionaryRevisionService;
 use App\Services\Dictionary\DictionarySpeechService;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 class DictionaryController extends Controller
 {
+    public function show(Request $request, Word $word): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User && $user->isAdmin(), 403);
+
+        return response()->json([
+            'item' => WordResource::make(
+                $this->wordsForUser($user)->findOrFail($word->id),
+            )->resolve($request),
+        ]);
+    }
+
+    public function update(
+        DictionaryUpdateRequest $request,
+        Word $word,
+    ): JsonResponse {
+        $data = $request->validated();
+        $englishChanged = $word->en !== $data['english'];
+
+        $word->fill([
+            'ru' => $data['russian'],
+            'en' => $data['english'],
+            'ru_variants' => $data['russianVariants'],
+            'en_variants' => $data['englishVariants'],
+            'transcription' => $englishChanged ? null : $word->transcription,
+        ]);
+        if ($englishChanged) {
+            $word->transcription_checked_at = null;
+        }
+        DB::transaction(fn () => $word->save());
+
+        return response()->json([
+            'item' => WordResource::make(
+                $this->wordsForUser($request->user())->findOrFail($word->id),
+            )->resolve($request),
+        ]);
+    }
+
     public function audio(
         Word $word,
         DictionarySpeechService $speechService,
@@ -133,7 +175,7 @@ class DictionaryController extends Controller
 
         $userInfo = $user->info;
 
-        if ($userInfo === null) {
+        if (! $user->isAdmin() && $userInfo === null) {
             return response()->json([
                 'message' => 'Не указан год поступления пользователя в первый класс.',
                 'code' => 'USER_INFO_REQUIRED',
@@ -143,10 +185,10 @@ class DictionaryController extends Controller
         $validated = $request->validated();
         $search = mb_strtolower($validated['search'] ?? '');
         $perPage = $validated['perPage'] ?? 30;
-        $availableGrade = $user->grade;
+        $availableGrade = $user->isAdmin() ? null : $user->grade;
 
         $query = Word::query()
-            ->where('grade', '<=', $availableGrade)
+            ->when($availableGrade !== null, fn ($query) => $query->where('grade', '<=', $availableGrade))
             ->withExists([
                 'userRepetitions as is_active' => fn ($query) => $query
                     ->where('user_id', $user->id)
@@ -222,22 +264,25 @@ class DictionaryController extends Controller
         ]);
     }
 
-    public function sync(DictionarySyncRequest $request): JsonResponse
+    public function sync(DictionarySyncRequest $request, DictionaryRevisionService $revisions): JsonResponse
     {
         $user = $request->user();
         abort_unless($user instanceof User, 401);
 
-        if ($user->info === null) {
+        if (! $user->isAdmin() && $user->info === null) {
             return response()->json([
                 'message' => 'Не указан год поступления пользователя в первый класс.',
                 'code' => 'USER_INFO_REQUIRED',
             ], 409);
         }
 
-        $availableGrade = $user->grade;
+        $availableGrade = $user->isAdmin() ? null : $user->grade;
         $latestCreatedAt = Word::query()
-            ->where('grade', '<=', $availableGrade)
+            ->when($availableGrade !== null, fn ($query) => $query->where('grade', '<=', $availableGrade))
             ->max('created_at');
+        $latestUpdatedAt = Word::query()
+            ->when($availableGrade !== null, fn ($query) => $query->where('grade', '<=', $availableGrade))
+            ->max('updated_at');
         $revisionReleasedAt = CarbonImmutable::parse(
             config('dictionary.revision_released_at'),
         );
@@ -252,7 +297,7 @@ class DictionaryController extends Controller
         $cachedAvailableGrade = $cachedAvailableGrade === null
             ? null
             : (int) $cachedAvailableGrade;
-        $revision = (int) config('dictionary.revision');
+        $revision = $revisions->forGrade($availableGrade);
         $cachedRevision = $request->validated('revision');
         $cachedRevision = $cachedRevision === null
             ? null
@@ -267,13 +312,14 @@ class DictionaryController extends Controller
             || ($cachedRevision !== null && $cachedRevision !== $revision)
             || $hasOutdatedLegacyCache;
         $query = $this->wordsForUser($user)
-            ->where('grade', '<=', $availableGrade);
+            ->when($availableGrade !== null, fn ($query) => $query->where('grade', '<=', $availableGrade));
 
         if (! $isFullSync) {
+            $updatedAfter = $request->validated('updatedAfter');
             $query->where(
-                'created_at',
-                '>',
-                CarbonImmutable::parse($createdAfter),
+                $updatedAfter === null ? 'created_at' : 'updated_at',
+                $updatedAfter === null ? '>' : '>=',
+                CarbonImmutable::parse($updatedAfter ?? $createdAfter),
             );
         }
 
@@ -290,6 +336,9 @@ class DictionaryController extends Controller
             'latestCreatedAt' => CarbonImmutable::parse(
                 $latestCreatedAt,
             )->toISOString(),
+            'latestUpdatedAt' => $latestUpdatedAt === null
+                ? null
+                : CarbonImmutable::parse($latestUpdatedAt)->toISOString(),
             'availableGrade' => $availableGrade,
             'revision' => $revision,
             'isFullSync' => $isFullSync,

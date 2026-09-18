@@ -17,6 +17,7 @@ class UserResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'phone' => $this->phone,
+            'role' => $this->role->value,
             'grade' => $this->grade,
             'avatar' => $this->avatar_path
                 ? Storage::disk('public')->url($this->avatar_path)

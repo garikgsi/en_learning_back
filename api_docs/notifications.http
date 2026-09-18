@@ -17,6 +17,12 @@ Authorization: Bearer {{accessToken}}
 ### Incrementally synchronize notifications
 # Persist nextSequence locally and pass it as afterSequence on the next sync.
 # Repeat while hasMore is true.
+# Balance notifications: encoin.credited (daily/weekly rewards and weekly bonus),
+# encoin.withdrawal.processed (administrator confirmed payment and coin deduction).
+# data.route=/balance; data.amount is signed, data.balance is balance after change.
+# data.amountRubles uses the reward/request rate snapshot.
+# Notifications and push jobs are deduplicated by ledger entry; push follows
+# device preferences and the existing delivery window, after transaction commit.
 # @name syncNotifications
 GET {{baseUrl}}/api/v1/notifications?afterSequence=0&perPage=100
 Accept: application/json

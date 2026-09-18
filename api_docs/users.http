@@ -1,4 +1,6 @@
 ### Get current user
+# The response data.role is "user" or "admin".
+# Profile updates cannot change the role.
 # @name getCurrentUser
 GET {{baseUrl}}/api/v1/users/me
 Accept: application/json

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use App\Services\Auth\AuthTokenService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -12,6 +13,29 @@ use Tests\TestCase;
 class UserControllerTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_current_user_includes_the_admin_role(): void
+    {
+        $user = User::factory()->create(['role' => UserRole::admin]);
+
+        $this->withToken($this->accessToken($user))
+            ->getJson('/api/v1/users/me')
+            ->assertOk()
+            ->assertJsonPath('data.role', 'admin');
+    }
+
+    public function test_profile_update_cannot_change_the_role(): void
+    {
+        $user = User::factory()->create();
+
+        $this->withToken($this->accessToken($user))
+            ->patchJson('/api/v1/users/me', ['name' => 'New name', 'role' => 'admin'])
+            ->assertOk()
+            ->assertJsonPath('data.name', 'New name')
+            ->assertJsonPath('data.role', 'user');
+
+        $this->assertFalse($user->refresh()->isAdmin());
+    }
 
     public function test_update_trims_and_updates_name(): void
     {

@@ -1,0 +1,79 @@
+### Get the authenticated user's EnCoin balance
+# balance is total coins; reserved is coins in pending withdrawals;
+# available=balance-reserved. New wallets start at zero, no historical backfill.
+# Daily: 1 coin, plus 1 if completed by end of due date in Europe/Moscow.
+# Weekly: 5 coins. Self-study does not award coins.
+# Rewards are issued once per exercise, only for a full first completion
+# (all words, both directions); repeats and offline retries never duplicate rewards.
+# Weekly bonus: +5 once per Monday–Sunday week, as soon as every currently
+# assigned daily/weekly exercise for that week has been completed in full.
+# Additional tasks added after the bonus do not issue a second weekly bonus.
+# requests contains the latest 50 requests for this user, no other users' data.
+# rublesPerCoin is the current database rate (initially 10).
+# totalEarnedRubles sums positive rewards at the rate at each award, in kopecks.
+# totalEarnedCoins sums all positive rewards, including bonuses and withdrawn coins.
+# Withdrawals and subsequent rate changes do not reduce/revalue lifetime earnings.
+# Each new reward, including the weekly bonus, creates an encoin.credited notification
+# linking to /balance with amount and new balance.
+# @name getEnCoinBalance
+GET {{baseUrl}}/api/v1/balance
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+### Reserve coins for a withdrawal request
+# Available balance must be >=50. Coins must be a positive integer <=available.
+# Store a stable clientRequestId for retries of the same requested amount.
+# Identical retry returns the same item with 200; first creation returns 201.
+# Coins remain in balance but are reserved until an administrator processes it.
+# The current rate is fixed on the request, not recalculated later.
+# @name requestEnCoinWithdrawal
+POST {{baseUrl}}/api/v1/balance/withdrawals
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "coins": 50,
+    "clientRequestId": "01990b00-1234-7000-8000-123456789abc"
+}
+
+### List monetization requests as an administrator
+# 403 for ordinary users. status: pending (default), processed, all.
+# Paginated by 30. Each item includes nickname, phone, current total balance,
+# current reserved coins, requested coins, request rate/rubles, dates and status.
+# @name getAdminMonetizationRequests
+GET {{baseUrl}}/api/v1/admin/monetization-requests?status=all&page=1
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+### Mark a monetization request processed after manual payment
+# Administrators only. This records manual processing; it does not send money.
+# Reserved coins are deducted once, and processedAt/processed_by are recorded.
+# Repeating this request succeeds without another deduction.
+# Creates one encoin.withdrawal.processed notification:
+# coins deducted, request rubles credited to the card, and the new coin balance.
+# Notification journal and ledger changes are atomic; push is queued after commit.
+# @name processEnCoinWithdrawal
+PUT {{baseUrl}}/api/v1/admin/monetization-requests/42/processed
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+### Get the current EnCoin rate as an administrator
+# @name getAdminEnCoinRate
+GET {{baseUrl}}/api/v1/admin/encoin-rate
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+### Change the EnCoin rate as an administrator
+# Positive rubles per coin, 0.01–100000, at most two decimal places.
+# The database stores integer kopecks, plus the administrator and update time.
+# Existing requests and reward entries keep their original rate snapshots.
+# @name updateAdminEnCoinRate
+PUT {{baseUrl}}/api/v1/admin/encoin-rate
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "rublesPerCoin": "12.50"
+}

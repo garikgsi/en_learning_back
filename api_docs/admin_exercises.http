@@ -1,0 +1,29 @@
+### Select a recipient for a manually assigned daily exercise
+# Administrators only (401 without authentication, 403 for ordinary users).
+# Returns items containing only id, name, phone and grade (nullable).
+# @name getAdminExerciseUsers
+GET {{baseUrl}}/api/v1/admin/users
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+### Assign a daily exercise for a selected date
+# Administrators only. Select 1–100 distinct existing word ids, in display order.
+# Phrases and words of any grade are allowed; no automatic selection filters.
+# dueDate is a calendar date in YYYY-MM-DD format, with no timezone conversion.
+# replaceExisting replaces the latest uncompleted daily exercise on that date.
+# Completed exercises, other dates, weekly and user exercises remain unchanged.
+# Otherwise a new daily exercise is created, including when replaceExisting=false.
+# Response: { item: Exercise, wasReplaced: boolean }, 200 for replacement, 201 for creation.
+# Day boundaries use the same server timezone as automatic daily exercises.
+# @name assignAdminDailyExercise
+POST {{baseUrl}}/api/v1/admin/exercises/daily
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "userId": "01990b00-1234-7000-8000-123456789abc",
+    "wordIds": [42, 43],
+    "dueDate": "2026-09-20",
+    "replaceExisting": true
+}

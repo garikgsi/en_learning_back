@@ -7,6 +7,7 @@ use App\Exceptions\IdempotencyKeyReusedException;
 use App\Exceptions\UserExerciseAlreadyCompletedException;
 use App\Models\Exercise;
 use App\Models\ExerciseComplete;
+use App\Models\User;
 use App\Models\UserWordRepetition;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
@@ -15,6 +16,8 @@ use Illuminate\Validation\ValidationException;
 
 class ExerciseCompletionService
 {
+    public function __construct(private readonly EnCoinService $enCoinService) {}
+
     /**
      * @param  array<int, array{
      *     exercise_item_id: int,
@@ -45,6 +48,7 @@ class ExerciseCompletionService
                 $itemResults,
                 $requestHash,
             ): array {
+                User::query()->whereKey($exercise->user_id)->lockForUpdate()->firstOrFail();
                 $lockedExercise = Exercise::query()
                     ->whereKey($exercise->id)
                     ->lockForUpdate()
@@ -67,6 +71,7 @@ class ExerciseCompletionService
                 }
 
                 $this->validateItemResults($lockedExercise, $itemResults);
+                $alreadyCompleted = $lockedExercise->completions()->exists();
 
                 $complete = $lockedExercise->completions()->create([
                     'client_attempt_id' => $attemptId,
@@ -74,6 +79,7 @@ class ExerciseCompletionService
                     'completed_at' => $completedAt,
                 ]);
                 $complete->itemResults()->createMany($itemResults);
+                $this->enCoinService->rewardCompletion($lockedExercise, $complete, $alreadyCompleted);
 
                 UserWordRepetition::query()
                     ->where('user_id', $lockedExercise->user_id)
