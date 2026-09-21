@@ -157,6 +157,7 @@ class ExerciseStatisticsService
             ->with([
                 'type',
                 'items.word:id,ru,en,ru_variants,en_variants,transcription',
+                'items.word.plural:id,word_id,plural_en,plural_ru,plural_transcription',
             ])
             ->withCount('items')
             ->get()
@@ -184,6 +185,13 @@ class ExerciseStatisticsService
                         'ruVariants' => $item->word->ru_variants ?? [],
                         'enVariants' => $item->word->en_variants ?? [],
                         'transcription' => $item->word->transcription,
+                        'plural' => $item->word->plural === null ? null : [
+                            'id' => $item->word->plural->id,
+                            'english' => $item->word->plural->plural_en,
+                            'russian' => $item->word->plural->plural_ru,
+                            'transcription' => $item->word->plural
+                                ->plural_transcription,
+                        ],
                         'hasErrors' => false,
                     ])
                     ->values()
@@ -201,6 +209,7 @@ class ExerciseStatisticsService
                 'exercise.type',
                 'exercise.items:id,exercise_id,word_id',
                 'exercise.items.word:id,ru,en,ru_variants,en_variants,transcription',
+                'exercise.items.word.plural:id,word_id,plural_en,plural_ru,plural_transcription',
                 'itemResults:id,exercise_complete_id,exercise_item_id,errors_count',
             ])
             ->get()
@@ -225,6 +234,13 @@ class ExerciseStatisticsService
                         'ruVariants' => $item->word->ru_variants ?? [],
                         'enVariants' => $item->word->en_variants ?? [],
                         'transcription' => $item->word->transcription,
+                        'plural' => $item->word->plural === null ? null : [
+                            'id' => $item->word->plural->id,
+                            'english' => $item->word->plural->plural_en,
+                            'russian' => $item->word->plural->plural_ru,
+                            'transcription' => $item->word->plural
+                                ->plural_transcription,
+                        ],
                         'hasErrors' => $errorWords->has($item->id),
                     ])
                     ->values();

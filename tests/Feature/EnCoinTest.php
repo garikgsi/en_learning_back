@@ -80,6 +80,35 @@ class EnCoinTest extends TestCase
         $this->assertSame(5, $notification->data['amount']);
     }
 
+    public function test_plural_reward_matches_daily_and_requires_only_english_result(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-09-18T20:00:00Z'));
+        $user = User::factory()->create();
+        $plural = $this->exercise($user, ExerciseTypeCode::plural, '2026-09-18');
+        $this->exercise($user, ExerciseTypeCode::weekly, '2026-09-18');
+        $this->login($user);
+        $item = $plural->items->sole();
+
+        $this->postJson('/api/v1/exercises/complete', [
+            'exercise_id' => $plural->id,
+            'attempt_id' => (string) Str::uuid(),
+            'completed_at' => now()->toISOString(),
+            'exercise_items_result' => [[
+                'exercise_item_id' => $item->id,
+                'lang_id' => 1,
+                'errors_count' => 0,
+                'hints_count' => 0,
+                'variants' => [],
+            ]],
+        ])->assertCreated();
+
+        $this->assertDatabaseHas('encoin_entries', [
+            'exercise_id' => $plural->id,
+            'amount' => 2,
+            'reason' => 'daily',
+        ]);
+    }
+
     public function test_week_bonus_is_immediate_once_per_week_and_ignores_self_study_and_other_users(): void
     {
         $this->travelTo(CarbonImmutable::parse('2026-09-18T18:00:00Z'));

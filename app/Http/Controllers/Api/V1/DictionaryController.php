@@ -9,6 +9,7 @@ use App\Http\Requests\Api\V1\DictionaryStoreRequest;
 use App\Http\Requests\Api\V1\DictionarySyncRequest;
 use App\Http\Requests\Api\V1\DictionaryUpdateRequest;
 use App\Http\Resources\Api\V1\WordResource;
+use App\Models\Plural;
 use App\Models\User;
 use App\Models\Word;
 use App\Services\Dictionary\Contracts\PhoneticsDriver;
@@ -79,6 +80,26 @@ class DictionaryController extends Controller
         }
 
         $audio = $speechService->audio(new SpeechRequest($word->en));
+
+        if ($audio === null) {
+            return response()->json([
+                'message' => 'Для слова пока нет доступного произношения.',
+                'code' => 'WORD_AUDIO_UNAVAILABLE',
+            ], 404);
+        }
+
+        return response($audio->contents, 200, [
+            'Content-Type' => $audio->contentType,
+            'Content-Length' => (string) strlen($audio->contents),
+            'Cache-Control' => 'public, max-age=86400',
+        ]);
+    }
+
+    public function pluralAudio(
+        Plural $plural,
+        DictionarySpeechService $speechService,
+    ): Response|JsonResponse {
+        $audio = $speechService->audio(new SpeechRequest($plural->plural_en));
 
         if ($audio === null) {
             return response()->json([

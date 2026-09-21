@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * @property-read bool $is_active
@@ -26,6 +27,14 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 #[ObservedBy(WordObserver::class)]
 class Word extends Model
 {
+    /**
+     * @return HasOne<Plural, $this>
+     */
+    public function plural(): HasOne
+    {
+        return $this->hasOne(Plural::class);
+    }
+
     /**
      * @return HasMany<ExerciseItem, $this>
      */

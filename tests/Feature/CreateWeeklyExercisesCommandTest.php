@@ -75,7 +75,7 @@ class CreateWeeklyExercisesCommandTest extends TestCase
         $this->assertDatabaseCount('user_notifications', 2);
         $this->assertArrayNotHasKey($testUser->id, $weeklyExercises);
         $this->assertEqualsCanonicalizing(
-            [$words[0]->id, $words[1]->id, $words[2]->id],
+            $words->pluck('id')->all(),
             $weeklyExercises[$firstUser->id]
                 ->items
                 ->pluck('word_id')
@@ -117,6 +117,63 @@ class CreateWeeklyExercisesCommandTest extends TestCase
         $this->assertFalse($event->isDue(app()));
     }
 
+    public function test_second_week_contains_only_that_weeks_daily_words_when_previous_exercises_are_uncompleted(): void
+    {
+        $this->seed(ExerciseTypesSeeder::class);
+
+        $user = User::factory()->create();
+        $words = collect(range(1, 8))->map(
+            fn (int $number): Word => Word::query()->create([
+                'ru' => "слово {$number}",
+                'en' => "word {$number}",
+                'grade' => 1,
+            ]),
+        );
+
+        foreach (range(0, 3) as $day) {
+            $this->createDailyExercise(
+                $user,
+                CarbonImmutable::parse('2026-07-20')->addDays($day)->toDateString(),
+                [$words[$day]->id],
+            );
+        }
+
+        $this->travelTo(CarbonImmutable::parse('2026-07-24 12:00:00'));
+        $this->artisan('exercises:create-weekly')->assertSuccessful();
+
+        foreach (range(0, 3) as $day) {
+            $this->createDailyExercise(
+                $user,
+                CarbonImmutable::parse('2026-07-27')->addDays($day)->toDateString(),
+                [$words[$day + 4]->id],
+            );
+        }
+
+        $this->travelTo(CarbonImmutable::parse('2026-07-31 12:00:00'));
+        $this->artisan('exercises:create-weekly')->assertSuccessful();
+
+        $weeklyType = ExerciseType::forCode(ExerciseTypeCode::weekly);
+        $secondWeekWords = Exercise::query()
+            ->where('user_id', $user->id)
+            ->where('type_id', $weeklyType->id)
+            ->whereDate('dueDate', '2026-07-31')
+            ->sole()
+            ->items()
+            ->pluck('word_id')
+            ->all();
+
+        $this->assertEqualsCanonicalizing(
+            $words->slice(4)->pluck('id')->all(),
+            $secondWeekWords,
+        );
+        $this->assertEmpty(
+            array_intersect(
+                $words->take(4)->pluck('id')->all(),
+                $secondWeekWords,
+            ),
+        );
+    }
+
     /**
      * @param  array<int, int>  $wordIds
      */
@@ -130,6 +187,10 @@ class CreateWeeklyExercisesCommandTest extends TestCase
             'type_id' => ExerciseTypeCode::daily->value,
             'dueDate' => $dueDate,
         ]);
+        $exercise->forceFill([
+            'created_at' => CarbonImmutable::parse($dueDate),
+            'updated_at' => CarbonImmutable::parse($dueDate),
+        ])->saveQuietly();
         $exercise->items()->createMany(
             array_map(
                 fn (int $wordId): array => ['word_id' => $wordId],

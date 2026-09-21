@@ -1,8 +1,8 @@
 <?php
 
 return [
-    'revision' => 7,
-    'revision_released_at' => '2026-08-26T00:00:00Z',
+    'revision' => 8,
+    'revision_released_at' => '2026-09-21T00:00:00Z',
 
     'drivers' => [
         'translation' => env(

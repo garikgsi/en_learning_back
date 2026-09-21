@@ -32,6 +32,15 @@ class ExerciseResource extends JsonResource
                     'transcription' => $item->word->transcription,
                     'grade' => $item->word->grade,
                 ],
+                'plural' => $item->word->plural === null
+                    ? null
+                    : [
+                        'id' => $item->word->plural->id,
+                        'en' => $item->word->plural->plural_en,
+                        'ru' => $item->word->plural->plural_ru,
+                        'transcription' => $item->word->plural
+                            ->plural_transcription,
+                    ],
             ])->all(),
             'createdAt' => $this->created_at->toISOString(),
         ];

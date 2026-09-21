@@ -198,7 +198,7 @@ class ExerciseController extends Controller
     {
         return Exercise::query()
             ->where('user_id', $user->id)
-            ->with(['type', 'items.word']);
+            ->with(['type', 'items.word.plural']);
     }
 
     private function authenticatedUser(Request $request): User

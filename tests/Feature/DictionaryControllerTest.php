@@ -158,6 +158,7 @@ class DictionaryControllerTest extends TestCase
     public function test_user_can_store_a_reviewed_dictionary_word(): void
     {
         $user = $this->userWithFirstGradeYear(now()->year - 4);
+        $baselineWordsCount = Word::query()->count();
 
         $this->withToken($this->accessToken($user))
             ->postJson('/api/v1/dictionary/words', [
@@ -171,7 +172,10 @@ class DictionaryControllerTest extends TestCase
             ->assertJsonPath('item.en', 'store')
             ->assertJsonPath('item.transcription', '/stɔː/');
 
-        $word = Word::query()->sole();
+        $word = Word::query()
+            ->where('ru', 'магазин')
+            ->where('en', 'store')
+            ->sole();
         $this->assertSame(4, $word->grade);
 
         $this->withToken($this->accessToken($user))
@@ -183,12 +187,13 @@ class DictionaryControllerTest extends TestCase
             ->assertJsonPath('wasCreated', false)
             ->assertJsonPath('item.id', $word->id);
 
-        $this->assertDatabaseCount('words', 1);
+        $this->assertDatabaseCount('words', $baselineWordsCount + 1);
     }
 
     public function test_dictionary_word_accepts_only_supported_characters(): void
     {
         $user = $this->userWithFirstGradeYear(now()->year - 4);
+        $baselineWordsCount = Word::query()->count();
 
         $this->withToken($this->accessToken($user))
             ->postJson('/api/v1/dictionary/words', [
@@ -205,12 +210,12 @@ class DictionaryControllerTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['russian', 'english']);
 
-        $this->assertDatabaseCount('words', 1);
+        $this->assertDatabaseCount('words', $baselineWordsCount + 1);
     }
 
     public function test_dictionary_searches_both_languages_case_insensitively(): void
     {
-        $user = $this->userWithFirstGradeYear(now()->year - 5);
+        $user = $this->userWithFirstGradeYear(now()->year - 3);
 
         $home = $this->createWord('дом', 'Home', 1);
         $school = $this->createWord('Школа', 'School', 1);
@@ -254,7 +259,7 @@ class DictionaryControllerTest extends TestCase
 
     public function test_dictionary_paginates_results(): void
     {
-        $user = $this->userWithFirstGradeYear(now()->year - 5);
+        $user = $this->userWithFirstGradeYear(now()->year - 3);
 
         $this->createWord('альфа', 'alpha', 1);
         $second = $this->createWord('бета', 'beta', 1);
@@ -274,8 +279,8 @@ class DictionaryControllerTest extends TestCase
     {
         $this->seed(LangSeeder::class);
 
-        $user = $this->userWithFirstGradeYear(now()->year - 5);
-        $otherUser = $this->userWithFirstGradeYear(now()->year - 5);
+        $user = $this->userWithFirstGradeYear(now()->year - 3);
+        $otherUser = $this->userWithFirstGradeYear(now()->year - 3);
         $word = $this->createWord('дом', 'home', 1);
         $exercise = $this->createExercise($user);
         $otherExercise = $this->createExercise($otherUser);
@@ -374,8 +379,8 @@ class DictionaryControllerTest extends TestCase
             ->getJson('/api/v1/dictionary/sync')
             ->assertOk()
             ->assertJsonPath('availableGrade', 2)
-            ->assertJsonPath('revision', 7)
-            ->assertJsonPath('latestCreatedAt', '2026-08-26T00:00:00.000000Z')
+            ->assertJsonPath('revision', 8)
+            ->assertJsonPath('latestCreatedAt', '2026-09-21T00:00:00.000000Z')
             ->assertJsonPath('isFullSync', true)
             ->assertJsonPath('page', 1)
             ->assertJsonPath('perPage', 500)
@@ -396,12 +401,12 @@ class DictionaryControllerTest extends TestCase
         $newerWord->save();
 
         $this->withToken($this->accessToken($user))
-            ->getJson('/api/v1/dictionary/sync?createdAfter=2026-08-13T10:00:00Z&availableGrade=2&revision=7')
+            ->getJson('/api/v1/dictionary/sync?createdAfter=2026-08-13T10:00:00Z&availableGrade=2&revision=8')
             ->assertOk()
             ->assertJsonPath('isFullSync', false)
             ->assertJsonCount(1, 'items')
             ->assertJsonPath('items.0.id', $newerWord->id)
-            ->assertJsonPath('latestCreatedAt', '2026-08-26T00:00:00.000000Z');
+            ->assertJsonPath('latestCreatedAt', '2026-09-21T00:00:00.000000Z');
     }
 
     public function test_dictionary_sync_is_full_when_users_available_grade_changes(): void
@@ -426,7 +431,7 @@ class DictionaryControllerTest extends TestCase
         $this->withToken($this->accessToken($user))
             ->getJson('/api/v1/dictionary/sync?createdAfter='.urlencode($word->created_at->toISOString()).'&availableGrade=3&revision=1')
             ->assertOk()
-            ->assertJsonPath('revision', 7)
+            ->assertJsonPath('revision', 8)
             ->assertJsonPath('isFullSync', true)
             ->assertJsonCount(1, 'items');
     }
@@ -442,7 +447,7 @@ class DictionaryControllerTest extends TestCase
             ->getJson('/api/v1/dictionary/sync?createdAfter=2026-08-13T10:00:00Z&availableGrade=3')
             ->assertOk()
             ->assertJsonPath('isFullSync', true)
-            ->assertJsonPath('latestCreatedAt', '2026-08-26T00:00:00.000000Z');
+            ->assertJsonPath('latestCreatedAt', '2026-09-21T00:00:00.000000Z');
 
         $this->withToken($this->accessToken($user))
             ->getJson('/api/v1/dictionary/sync?createdAfter='.urlencode($first->json('latestCreatedAt')).'&availableGrade=3')

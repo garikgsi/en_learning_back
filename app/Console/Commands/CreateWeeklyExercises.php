@@ -4,12 +4,10 @@ namespace App\Console\Commands;
 
 use App\Enums\ExerciseTypeCode;
 use App\Models\Exercise;
-use App\Models\ExerciseItem;
 use App\Models\ExerciseType;
 use App\Models\User;
 use App\Notifications\ExerciseCreated;
 use App\Services\ExerciseService;
-use Carbon\CarbonInterface;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\Console\Command\Command as SymfonyCommand;
@@ -26,8 +24,6 @@ class CreateWeeklyExercises extends Command
         $dailyType = ExerciseType::forCode(ExerciseTypeCode::daily);
         $weeklyType = ExerciseType::forCode(ExerciseTypeCode::weekly);
         $dueDate = today();
-        $periodStart = $dueDate->copy()->startOfWeek(CarbonInterface::MONDAY);
-        $periodEnd = $periodStart->copy()->addDays(3)->endOfDay();
         $createdCount = 0;
         $skippedCount = 0;
 
@@ -38,8 +34,6 @@ class CreateWeeklyExercises extends Command
                 $dailyType,
                 $dueDate,
                 $exerciseService,
-                $periodEnd,
-                $periodStart,
                 $weeklyType,
                 &$createdCount,
                 &$skippedCount,
@@ -57,21 +51,30 @@ class CreateWeeklyExercises extends Command
                         continue;
                     }
 
-                    $wordIds = ExerciseItem::query()
-                        ->whereHas(
-                            'exercise',
-                            fn ($query) => $query
-                                ->where('user_id', $user->id)
-                                ->where('type_id', $dailyType->id)
-                                ->whereBetween('dueDate', [
-                                    $periodStart,
-                                    $periodEnd,
-                                ]),
-                        )
-                        ->distinct()
-                        ->pluck('word_id')
-                        ->map(fn ($wordId): int => (int) $wordId)
-                        ->all();
+                    $dailyExercises = Exercise::query()
+                        ->where('user_id', $user->id)
+                        ->where('type_id', $dailyType->id)
+                        ->where('dueDate', '<', $dueDate)
+                        ->whereHas('items')
+                        ->with('items:id,exercise_id,word_id')
+                        ->orderByDesc('created_at')
+                        ->orderByDesc('id')
+                        ->get();
+                    $targetWordsCount = ((int) ($dailyExercises
+                        ->first()?->items->count() ?? 0)) * 4;
+                    $wordIds = [];
+
+                    foreach ($dailyExercises as $dailyExercise) {
+                        foreach ($dailyExercise->items as $item) {
+                            $wordIds[(int) $item->word_id] = (int) $item->word_id;
+
+                            if (count($wordIds) >= $targetWordsCount) {
+                                break 2;
+                            }
+                        }
+                    }
+
+                    $wordIds = array_values($wordIds);
 
                     if ($wordIds === []) {
                         $skippedCount++;

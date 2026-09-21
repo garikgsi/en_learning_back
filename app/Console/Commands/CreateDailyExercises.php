@@ -8,6 +8,8 @@ use App\Models\ExerciseType;
 use App\Models\User;
 use App\Notifications\ExerciseCreated;
 use App\Services\ExerciseService;
+use App\Services\PluralExerciseService;
+use Carbon\CarbonInterface;
 use DomainException;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -25,9 +27,13 @@ class CreateDailyExercises extends Command
 
     public function handle(
         ExerciseService $exerciseService,
+        PluralExerciseService $pluralExerciseService,
     ): int {
-        $type = ExerciseType::forCode(ExerciseTypeCode::daily);
         $dueDate = today();
+        $typeCode = $dueDate->dayOfWeekIso === CarbonInterface::THURSDAY
+            ? ExerciseTypeCode::plural
+            : ExerciseTypeCode::daily;
+        $type = ExerciseType::forCode($typeCode);
         $createdCount = 0;
         $skippedCount = 0;
 
@@ -38,7 +44,9 @@ class CreateDailyExercises extends Command
             ->chunk(100, function ($users) use (
                 $dueDate,
                 $exerciseService,
+                $pluralExerciseService,
                 $type,
+                $typeCode,
                 &$createdCount,
                 &$skippedCount,
             ): void {
@@ -59,17 +67,26 @@ class CreateDailyExercises extends Command
                         DB::transaction(function () use (
                             $dueDate,
                             $exerciseService,
+                            $pluralExerciseService,
                             $type,
+                            $typeCode,
                             $user,
                         ): void {
-                            $exercise = $exerciseService->create(
-                                $type,
-                                $user,
-                                $dueDate,
-                                $user->grade <= 5
-                                    ? self::PRIMARY_SCHOOL_WORDS_COUNT
-                                    : self::DEFAULT_WORDS_COUNT,
-                            );
+                            $wordsCount = $user->grade <= 5
+                                ? self::PRIMARY_SCHOOL_WORDS_COUNT
+                                : self::DEFAULT_WORDS_COUNT;
+                            $exercise = $typeCode === ExerciseTypeCode::plural
+                                ? $pluralExerciseService->create(
+                                    $user,
+                                    $dueDate,
+                                    $wordsCount,
+                                )
+                                : $exerciseService->create(
+                                    $type,
+                                    $user,
+                                    $dueDate,
+                                    $wordsCount,
+                                );
                             $user->notify(new ExerciseCreated($exercise));
                         });
                         $createdCount++;

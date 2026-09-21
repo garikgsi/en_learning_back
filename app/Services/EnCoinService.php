@@ -19,11 +19,18 @@ class EnCoinService
 {
     public function rewardCompletion(Exercise $exercise, ExerciseComplete $completion, bool $alreadyCompleted): void
     {
-        if ($alreadyCompleted || ! in_array((int) $exercise->type_id, [1, 2], true)
+        if ($alreadyCompleted || ! in_array((int) $exercise->type_id, [
+            ExerciseTypeCode::daily->value,
+            ExerciseTypeCode::weekly->value,
+            ExerciseTypeCode::plural->value,
+        ], true)
             || ! $this->isFullCompletion($exercise, $completion->itemResults)) {
             return;
         }
-        $daily = (int) $exercise->type_id === ExerciseTypeCode::daily->value;
+        $daily = in_array((int) $exercise->type_id, [
+            ExerciseTypeCode::daily->value,
+            ExerciseTypeCode::plural->value,
+        ], true);
         $deadline = CarbonImmutable::parse($exercise->dueDate->toDateString(), config('encoin.timezone'))->endOfDay();
         $amount = $daily ? 1 + ($completion->completed_at->lessThanOrEqualTo($deadline) ? 1 : 0) : 5;
         $entry = EnCoinEntry::query()->firstOrCreate(
@@ -36,7 +43,7 @@ class EnCoinService
         $this->awardCompletedWeeks($exercise->user);
     }
 
-    /** Results must cover every word in both translation directions. */
+    /** Results must cover every required answer direction. */
     private function isFullCompletion(Exercise $exercise, iterable $results): bool
     {
         $keys = [];
@@ -47,8 +54,12 @@ class EnCoinService
         if ($items->isEmpty()) {
             return false;
         }
+        $languages = (int) $exercise->type_id === ExerciseTypeCode::plural->value
+            ? [LangCode::en]
+            : [LangCode::en, LangCode::ru];
+
         foreach ($items as $item) {
-            foreach ([LangCode::en, LangCode::ru] as $lang) {
+            foreach ($languages as $lang) {
                 if (! isset($keys[$item->id.':'.$lang->value])) {
                     return false;
                 }
@@ -70,7 +81,11 @@ class EnCoinService
                     continue;
                 }
                 $week = CarbonImmutable::parse($start);
-                $exercises = $user->exercises()->whereIn('type_id', [1, 2])
+                $exercises = $user->exercises()->whereIn('type_id', [
+                    ExerciseTypeCode::daily->value,
+                    ExerciseTypeCode::weekly->value,
+                    ExerciseTypeCode::plural->value,
+                ])
                     ->whereBetween('dueDate', [$week, $week->endOfWeek()])
                     ->with(['items', 'completions.itemResults'])->get();
                 if ($exercises->isNotEmpty() && $exercises->every(fn (Exercise $exercise): bool => $exercise->completions->contains(fn (ExerciseComplete $complete): bool => $this->isFullCompletion($exercise, $complete->itemResults)))) {

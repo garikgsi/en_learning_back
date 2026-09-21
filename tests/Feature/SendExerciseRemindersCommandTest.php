@@ -16,13 +16,14 @@ class SendExerciseRemindersCommandTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_it_reminds_only_about_uncompleted_daily_and_weekly_exercises_due_today(): void
+    public function test_it_reminds_only_about_uncompleted_scheduled_exercises_due_today(): void
     {
         $this->travelTo(CarbonImmutable::parse('2026-07-31 15:00:00 UTC'));
         $this->seed(ExerciseTypesSeeder::class);
         $user = User::factory()->create();
         $daily = $this->createExercise($user, ExerciseTypeCode::daily, today());
         $weekly = $this->createExercise($user, ExerciseTypeCode::weekly, today());
+        $plural = $this->createExercise($user, ExerciseTypeCode::plural, today());
         $completed = $this->createExercise($user, ExerciseTypeCode::daily, today());
         $completed->completions()->create();
         $this->createExercise($user, ExerciseTypeCode::user, today());
@@ -39,13 +40,13 @@ class SendExerciseRemindersCommandTest extends TestCase
         );
 
         $this->artisan('exercises:send-reminders')
-            ->expectsOutput('Exercise reminders created: 2.')
+            ->expectsOutput('Exercise reminders created: 3.')
             ->assertSuccessful();
         $this->artisan('exercises:send-reminders')
             ->expectsOutput('Exercise reminders created: 0.')
             ->assertSuccessful();
 
-        $this->assertDatabaseCount('user_notifications', 2);
+        $this->assertDatabaseCount('user_notifications', 3);
         $this->assertDatabaseHas('user_notifications', [
             'type' => 'exercise.reminder',
             'deduplication_key' => "exercise:{$daily->id}:reminder",
@@ -53,6 +54,10 @@ class SendExerciseRemindersCommandTest extends TestCase
         $this->assertDatabaseHas('user_notifications', [
             'type' => 'exercise.reminder',
             'deduplication_key' => "exercise:{$weekly->id}:reminder",
+        ]);
+        $this->assertDatabaseHas('user_notifications', [
+            'type' => 'exercise.reminder',
+            'deduplication_key' => "exercise:{$plural->id}:reminder",
         ]);
         $this->assertDatabaseMissing('user_notifications', [
             'deduplication_key' => "exercise:{$testExercise->id}:reminder",

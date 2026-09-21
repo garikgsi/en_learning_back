@@ -100,3 +100,8 @@ Authorization: Bearer {{accessToken}}
     "russianVariants": ["лавка"],
     "englishVariants": ["shop"]
 }
+
+### Play an exceptional plural form
+# @name playPluralAudio
+GET {{baseUrl}}/api/v1/dictionary/plurals/1/audio
+Accept: audio/mpeg

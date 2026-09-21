@@ -17,13 +17,14 @@ class AdminDictionaryControllerTest extends TestCase
     public function test_admin_sees_every_grade_in_index_and_sync_without_user_info(): void
     {
         $admin = $this->admin();
+        $baselineWordsCount = Word::query()->count();
         $this->word('дом', 'home', 1);
         $this->word('университет', 'university', 99);
 
         $this->withToken($this->token($admin))->getJson('/api/v1/dictionary')
-            ->assertOk()->assertJsonPath('total', 2)->assertJsonPath('availableGrade', null);
+            ->assertOk()->assertJsonPath('total', $baselineWordsCount + 2)->assertJsonPath('availableGrade', null);
         $this->getJson('/api/v1/dictionary/sync')
-            ->assertOk()->assertJsonCount(2, 'items')->assertJsonPath('availableGrade', null);
+            ->assertOk()->assertJsonCount($baselineWordsCount + 2, 'items')->assertJsonPath('availableGrade', null);
     }
 
     public function test_admin_also_ignores_the_grade_in_existing_user_info(): void
@@ -42,6 +43,7 @@ class AdminDictionaryControllerTest extends TestCase
         $admin->info()->create(['first_grade_year' => now()->year - 2]);
         $this->word('дом', 'home', 1);
         $this->word('университет', 'university', 99);
+        $adminWordsCount = Word::query()->count();
         $token = $this->token($admin);
 
         $response = $this->withToken($token)->getJson('/api/v1/dictionary/sync');
@@ -52,7 +54,7 @@ class AdminDictionaryControllerTest extends TestCase
             'revision' => $response->json('revision'),
         ]);
         $this->getJson('/api/v1/dictionary/sync?'.$query)
-            ->assertOk()->assertJsonPath('isFullSync', true)->assertJsonCount(2, 'items');
+            ->assertOk()->assertJsonPath('isFullSync', true)->assertJsonCount($adminWordsCount, 'items');
 
         $admin->role = UserRole::user;
         $admin->save();
@@ -81,6 +83,7 @@ class AdminDictionaryControllerTest extends TestCase
     public function test_admin_updates_values_and_variants_without_changing_grade_or_repetitions(): void
     {
         $admin = $this->admin();
+        $baselineWordsCount = Word::query()->count();
         $word = $this->word('дом', 'home', 99);
         UserWordRepetition::query()->create(['user_id' => $admin->id, 'word_id' => $word->id, 'is_active' => true]);
 
@@ -89,7 +92,7 @@ class AdminDictionaryControllerTest extends TestCase
         ])->assertOk()->assertJsonPath('item.ru', 'жилище')
             ->assertJsonPath('item.enVariants', ['house'])->assertJsonPath('item.ruVariants', ['здание'])
             ->assertJsonPath('item.grade', 99)->assertJsonPath('item.is_active', true);
-        $this->assertDatabaseCount('words', 1);
+        $this->assertDatabaseCount('words', $baselineWordsCount + 1);
         $this->assertDatabaseCount('user_word_repetition', 1);
     }
 
@@ -144,21 +147,28 @@ class AdminDictionaryControllerTest extends TestCase
         $first = $this->withToken($this->token($admin))->getJson('/api/v1/dictionary/sync')->assertOk();
         $this->patchJson('/api/v1/dictionary/words/'.$word->id, $this->payload())->assertOk();
 
-        $this->getJson('/api/v1/dictionary/sync?'.http_build_query([
+        $response = $this->getJson('/api/v1/dictionary/sync?'.http_build_query([
             'createdAfter' => $first->json('latestCreatedAt'),
             'updatedAfter' => $first->json('latestUpdatedAt'),
             'revision' => $first->json('revision'),
-        ]))->assertOk()->assertJsonPath('isFullSync', true)
-            ->assertJsonPath('items.0.enVariants', ['house']);
+        ]))->assertOk()->assertJsonPath('isFullSync', true);
+        $this->assertSame(
+            ['house'],
+            collect($response->json('items'))->firstWhere('id', $word->id)['enVariants'],
+        );
 
         $regular = User::factory()->create();
         $regular->info()->create(['first_grade_year' => now()->year - 2]);
-        $this->withToken($this->token($regular))->getJson('/api/v1/dictionary/sync?'.http_build_query([
+        $response = $this->withToken($this->token($regular))->getJson('/api/v1/dictionary/sync?'.http_build_query([
             'createdAfter' => $first->json('latestCreatedAt'),
             'updatedAfter' => $first->json('latestUpdatedAt'),
             'revision' => $first->json('revision'),
             'availableGrade' => 2,
-        ]))->assertOk()->assertJsonPath('items.0.enVariants', ['house']);
+        ]))->assertOk();
+        $this->assertSame(
+            ['house'],
+            collect($response->json('items'))->firstWhere('id', $word->id)['enVariants'],
+        );
     }
 
     public function test_editing_grade_five_updates_every_affected_users_version_only(): void
@@ -192,8 +202,12 @@ class AdminDictionaryControllerTest extends TestCase
                 ]))->assertOk();
             if ($entry['grade'] >= 5) {
                 $response->assertJsonPath('revision', $cached['revision'] + 1)
-                    ->assertJsonPath('isFullSync', true)
-                    ->assertJsonPath('items.0.enVariants', ['house']);
+                    ->assertJsonPath('isFullSync', true);
+                $this->assertSame(
+                    ['house'],
+                    collect($response->json('items'))
+                        ->firstWhere('id', $word->id)['enVariants'],
+                );
             } else {
                 $response->assertJsonPath('revision', $cached['revision'])
                     ->assertJsonPath('isFullSync', false)
@@ -202,7 +216,7 @@ class AdminDictionaryControllerTest extends TestCase
         }
 
         $this->withToken($this->token($admin))->getJson('/api/v1/dictionary/sync')
-            ->assertOk()->assertJsonPath('revision', 8);
+            ->assertOk()->assertJsonPath('revision', 9);
     }
 
     public function test_multiple_edits_in_the_same_second_have_different_versions(): void
@@ -245,9 +259,13 @@ class AdminDictionaryControllerTest extends TestCase
                 ]))->assertOk()->assertJsonPath('isFullSync', true);
             $this->assertGreaterThan($cached['revision'], $response->json('revision'));
             if ($user->is($fifthGrade)) {
-                $response->assertJsonCount(0, 'items');
+                $this->assertNull(
+                    collect($response->json('items'))->firstWhere('id', $word->id),
+                );
             } else {
-                $response->assertJsonPath('items.0.id', $word->id)->assertJsonPath('items.0.grade', 6);
+                $updatedWord = collect($response->json('items'))
+                    ->firstWhere('id', $word->id);
+                $this->assertSame(6, $updatedWord['grade']);
             }
         }
     }

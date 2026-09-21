@@ -9,6 +9,7 @@ use App\Models\ExerciseComplete;
 use App\Models\ExerciseItem;
 use App\Models\ExerciseItemResult;
 use App\Models\ExerciseType;
+use App\Models\Plural;
 use App\Models\User;
 use App\Models\UserWordRepetition;
 use App\Models\Word;
@@ -139,6 +140,52 @@ class ExerciseStatisticsControllerTest extends TestCase
                 .'&dateTo=2026-07-31T23:59:59Z',
             )
             ->assertUnauthorized();
+    }
+
+    public function test_plural_statistics_include_both_word_forms(): void
+    {
+        $this->seed(LangSeeder::class);
+
+        $user = User::factory()->create();
+        $plural = Plural::query()->with('word')->firstOrFail();
+        $type = ExerciseType::query()
+            ->where('name', ExerciseTypeCode::plural->name)
+            ->firstOrFail();
+        $exercise = Exercise::query()->create([
+            'user_id' => $user->id,
+            'type_id' => $type->id,
+            'dueDate' => '2026-07-04T09:00:00Z',
+        ]);
+        $exercise->items()->create(['word_id' => $plural->word_id]);
+        $this->createCompletion(
+            $exercise,
+            '2026-07-10T10:00:00Z',
+            [0],
+        );
+
+        $this->withToken($this->accessToken($user))
+            ->getJson(
+                '/api/v1/exercises/statistics'
+                .'?dateFrom=2026-07-01T00:00:00Z'
+                .'&dateTo=2026-07-31T23:59:59Z',
+            )
+            ->assertOk()
+            ->assertJsonPath('items.0.type.name', 'plural')
+            ->assertJsonPath('items.0.words.0.english', $plural->word->en)
+            ->assertJsonPath('items.0.words.0.russian', $plural->word->ru)
+            ->assertJsonPath('items.0.words.0.plural.id', $plural->id)
+            ->assertJsonPath(
+                'items.0.words.0.plural.english',
+                $plural->plural_en,
+            )
+            ->assertJsonPath(
+                'items.0.words.0.plural.russian',
+                $plural->plural_ru,
+            )
+            ->assertJsonPath(
+                'items.0.words.0.plural.transcription',
+                $plural->plural_transcription,
+            );
     }
 
     public function test_it_returns_current_week_and_month_charts_for_every_user(): void

@@ -52,6 +52,7 @@ class ExerciseCreated extends Notification implements StoresInNotificationJourna
         return in_array((int) $this->exercise->type_id, [
             ExerciseTypeCode::daily->value,
             ExerciseTypeCode::weekly->value,
+            ExerciseTypeCode::plural->value,
         ], true);
     }
 

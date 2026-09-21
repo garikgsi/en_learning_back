@@ -23,6 +23,7 @@ class SendExerciseReminders extends Command
             ->whereIn('type_id', [
                 ExerciseTypeCode::daily->value,
                 ExerciseTypeCode::weekly->value,
+                ExerciseTypeCode::plural->value,
             ])
             ->whereBetween('dueDate', [today(), today()->endOfDay()])
             ->whereDoesntHave('completions')

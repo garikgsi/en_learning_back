@@ -28,6 +28,10 @@ Route::prefix('v1')->group(function (): void {
         '/dictionary/words/{word}/audio',
         [DictionaryController::class, 'audio'],
     )->whereNumber('word');
+    Route::get(
+        '/dictionary/plurals/{plural}/audio',
+        [DictionaryController::class, 'pluralAudio'],
+    )->whereNumber('plural');
 
     Route::middleware('access.token')->group(function (): void {
         Route::get('/app-updates/latest', AppUpdateController::class);
