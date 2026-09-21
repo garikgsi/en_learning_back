@@ -29,6 +29,7 @@ class AdminDailyExerciseController extends Controller
                     'name' => $user->name,
                     'phone' => $user->phone,
                     'grade' => $user->grade,
+                    'avatar' => $user->avatar,
                     'totalEarnedCoins' => (int) ($user->total_earned_coins ?? 0),
                 ])->all(),
         ]);

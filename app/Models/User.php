@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * @property-read int|null $grade
@@ -23,6 +24,7 @@ use Illuminate\Notifications\Notifiable;
  * @property-read int|string|null $enc_balance
  * @property-read int|string|null $enc_reserved
  * @property-read int|string|null $total_earned_coins
+ * @property-read string $avatar
  */
 #[Fillable(['phone', 'name', 'avatar_path'])]
 #[Hidden(['pin_hash'])]
@@ -115,6 +117,18 @@ class User extends Authenticatable
             fn (): ?int => $this->info === null
                 ? null
                 : max(0, now()->year - $this->info->first_grade_year),
+        );
+    }
+
+    /**
+     * @return Attribute<string, never>
+     */
+    protected function avatar(): Attribute
+    {
+        return Attribute::get(
+            fn (): string => $this->avatar_path
+                ? Storage::disk('public')->url($this->avatar_path)
+                : '',
         );
     }
 

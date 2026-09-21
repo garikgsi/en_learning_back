@@ -12,6 +12,7 @@ use App\Services\Auth\AuthTokenService;
 use Carbon\CarbonInterface;
 use Database\Seeders\ExerciseTypesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class AdminDailyExerciseControllerTest extends TestCase
@@ -40,7 +41,9 @@ class AdminDailyExerciseControllerTest extends TestCase
 
     public function test_user_list_contains_recipient_details_without_secrets(): void
     {
-        $user = User::factory()->create(['name' => 'Анна']);
+        Storage::fake('public');
+        Storage::disk('public')->put('avatars/anna.webp', 'avatar');
+        $user = User::factory()->create(['name' => 'Анна', 'avatar_path' => 'avatars/anna.webp']);
         $user->info()->create(['first_grade_year' => now()->year - 5]);
         EnCoinEntry::query()->create([
             'user_id' => $user->id,
@@ -59,9 +62,10 @@ class AdminDailyExerciseControllerTest extends TestCase
         $this->loginAdmin();
         $response = $this->getJson('/api/v1/admin/users')->assertOk();
         $item = collect($response->json('items'))->firstWhere('id', $user->id);
-        $this->assertSame(['id', 'name', 'phone', 'grade', 'totalEarnedCoins'], array_keys($item));
+        $this->assertSame(['id', 'name', 'phone', 'grade', 'avatar', 'totalEarnedCoins'], array_keys($item));
         $this->assertSame(5, $item['grade']);
         $this->assertSame($user->phone, $item['phone']);
+        $this->assertStringEndsWith('/storage/avatars/anna.webp', $item['avatar']);
         $this->assertSame(12, $item['totalEarnedCoins']);
     }
 
