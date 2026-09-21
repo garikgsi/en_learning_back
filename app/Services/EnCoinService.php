@@ -31,7 +31,7 @@ class EnCoinService
             ExerciseTypeCode::daily->value,
             ExerciseTypeCode::plural->value,
         ], true);
-        $deadline = CarbonImmutable::parse($exercise->dueDate->toDateString(), config('encoin.timezone'))->endOfDay();
+        $deadline = $this->completionDeadline($exercise);
         $amount = $daily ? 1 + ($completion->completed_at->lessThanOrEqualTo($deadline) ? 1 : 0) : 5;
         $entry = EnCoinEntry::query()->firstOrCreate(
             ['user_id' => $exercise->user_id, 'source_key' => 'exercise:'.$exercise->id],
@@ -88,7 +88,20 @@ class EnCoinService
                 ])
                     ->whereBetween('dueDate', [$week, $week->endOfWeek()])
                     ->with(['items', 'completions.itemResults'])->get();
-                if ($exercises->isNotEmpty() && $exercises->every(fn (Exercise $exercise): bool => $exercise->completions->contains(fn (ExerciseComplete $complete): bool => $this->isFullCompletion($exercise, $complete->itemResults)))) {
+                $dailyExercises = $exercises->whereIn('type_id', [
+                    ExerciseTypeCode::daily->value,
+                    ExerciseTypeCode::plural->value,
+                ]);
+                $weeklyExercises = $exercises->where('type_id', ExerciseTypeCode::weekly->value);
+                if ($dailyExercises->count() !== 4 || $weeklyExercises->count() !== 1) {
+                    continue;
+                }
+                $weeklyDeadline = $this->completionDeadline($weeklyExercises->firstOrFail());
+                if (CarbonImmutable::now(config('encoin.timezone'))->lessThan($weeklyDeadline)) {
+                    continue;
+                }
+                if ($dailyExercises->concat($weeklyExercises)->every(fn (Exercise $exercise): bool => $exercise->completions->contains(fn (ExerciseComplete $complete): bool => $complete->completed_at->lessThanOrEqualTo($this->completionDeadline($exercise))
+                    && $this->isFullCompletion($exercise, $complete->itemResults)))) {
                     $entry = EnCoinEntry::query()->create([
                         'user_id' => $user->id, 'source_key' => 'week:'.$start,
                         'amount' => 5, 'kopecks_per_coin' => $this->rate()->kopecks_per_coin, 'reason' => 'weekly_bonus',
@@ -97,6 +110,14 @@ class EnCoinService
                 }
             }
         });
+    }
+
+    private function completionDeadline(Exercise $exercise): CarbonImmutable
+    {
+        return CarbonImmutable::parse(
+            $exercise->dueDate->toDateString(),
+            config('encoin.timezone'),
+        )->endOfDay();
     }
 
     public function rate(): EnCoinRate

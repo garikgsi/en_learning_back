@@ -109,30 +109,85 @@ class EnCoinTest extends TestCase
         ]);
     }
 
-    public function test_week_bonus_is_immediate_once_per_week_and_ignores_self_study_and_other_users(): void
+    public function test_week_bonus_is_awarded_after_the_weekly_deadline_for_four_timely_daily_exercises_and_weekly(): void
     {
         $this->travelTo(CarbonImmutable::parse('2026-09-18T18:00:00Z'));
         $user = User::factory()->create();
-        $daily = $this->exercise($user, ExerciseTypeCode::daily, '2026-09-17');
+        $dailyExercises = collect([
+            $this->exercise($user, ExerciseTypeCode::daily, '2026-09-14'),
+            $this->exercise($user, ExerciseTypeCode::daily, '2026-09-15'),
+            $this->exercise($user, ExerciseTypeCode::daily, '2026-09-16'),
+            $this->exercise($user, ExerciseTypeCode::plural, '2026-09-17'),
+        ]);
         $weekly = $this->exercise($user, ExerciseTypeCode::weekly, '2026-09-18');
         $this->exercise($user, ExerciseTypeCode::user, '2026-09-18');
         $this->exercise(User::factory()->create(), ExerciseTypeCode::daily, '2026-09-18');
         $this->login($user);
-        $this->postJson('/api/v1/exercises/complete', $this->completionPayload($daily))->assertCreated();
-        $this->getJson('/api/v1/balance')->assertOk()->assertJsonPath('balance', 1);
+        foreach ($dailyExercises as $exercise) {
+            $this->postJson('/api/v1/exercises/complete', $this->completionPayload(
+                $exercise,
+                $exercise->dueDate->setTimezone('Europe/Moscow')->endOfDay()->toISOString(),
+            ))->assertCreated();
+        }
         $this->postJson('/api/v1/exercises/complete', $this->completionPayload($weekly))->assertCreated();
-        $this->getJson('/api/v1/balance')->assertOk()->assertJsonPath('balance', 11);
+        $this->getJson('/api/v1/balance')->assertOk()->assertJsonPath('balance', 13);
+
+        $this->travelTo(CarbonImmutable::parse('2026-09-18T21:00:00Z'));
+        $this->login($user);
         $this->artisan('encoin:award-weekly-bonuses')->assertSuccessful();
-        $this->getJson('/api/v1/balance')->assertOk()->assertJsonPath('balance', 11);
+        $this->getJson('/api/v1/balance')->assertOk()->assertJsonPath('balance', 18);
+        $this->artisan('encoin:award-weekly-bonuses')->assertSuccessful();
+        $this->getJson('/api/v1/balance')->assertOk()->assertJsonPath('balance', 18);
         $extra = $this->exercise($user, ExerciseTypeCode::daily, '2026-09-18');
         $this->postJson('/api/v1/exercises/complete', $this->completionPayload($extra))->assertCreated();
-        $this->getJson('/api/v1/balance')->assertOk()->assertJsonPath('balance', 13)->assertJsonPath('totalEarnedCoins', 13);
+        $this->getJson('/api/v1/balance')->assertOk()->assertJsonPath('balance', 19)->assertJsonPath('totalEarnedCoins', 19);
         $this->assertSame(1, EnCoinEntry::query()->where('reason', 'weekly_bonus')->count());
         $bonus = $user->notifications()->get()->sole(fn ($item) => $item->data['reason'] === 'weekly_bonus');
         $this->assertSame('encoin.credited', $bonus->type);
         $this->assertSame(5, $bonus->data['amount']);
-        $this->assertSame(11, $bonus->data['balance']);
-        $this->assertCount(4, $user->notifications()->get());
+        $this->assertSame(18, $bonus->data['balance']);
+        $this->assertCount(7, $user->notifications()->get());
+    }
+
+    public function test_week_bonus_is_not_awarded_for_an_incomplete_week(): void
+    {
+        $user = User::factory()->create();
+        $daily = $this->exercise($user, ExerciseTypeCode::daily, '2026-09-17');
+        $weekly = $this->exercise($user, ExerciseTypeCode::weekly, '2026-09-18');
+        $this->login($user);
+        $this->postJson('/api/v1/exercises/complete', $this->completionPayload($daily, '2026-09-17T20:59:59Z'))->assertCreated();
+        $this->postJson('/api/v1/exercises/complete', $this->completionPayload($weekly, '2026-09-18T20:59:59Z'))->assertCreated();
+        $this->artisan('encoin:award-weekly-bonuses')->assertSuccessful();
+
+        $this->assertDatabaseMissing('encoin_entries', ['user_id' => $user->id, 'reason' => 'weekly_bonus']);
+    }
+
+    public function test_week_bonus_is_not_awarded_when_a_daily_or_weekly_exercise_is_late(): void
+    {
+        foreach ([ExerciseTypeCode::daily, ExerciseTypeCode::weekly] as $lateType) {
+            $user = User::factory()->create();
+            $exercises = collect([
+                $this->exercise($user, ExerciseTypeCode::daily, '2026-09-14'),
+                $this->exercise($user, ExerciseTypeCode::daily, '2026-09-15'),
+                $this->exercise($user, ExerciseTypeCode::daily, '2026-09-16'),
+                $this->exercise($user, ExerciseTypeCode::plural, '2026-09-17'),
+                $this->exercise($user, ExerciseTypeCode::weekly, '2026-09-18'),
+            ]);
+            $this->login($user);
+            foreach ($exercises as $exercise) {
+                $completedAt = $exercise->dueDate->setTimezone('Europe/Moscow')->endOfDay();
+                if ((int) $exercise->type_id === $lateType->value) {
+                    $completedAt = $completedAt->addSecond();
+                }
+                $this->postJson('/api/v1/exercises/complete', $this->completionPayload(
+                    $exercise,
+                    $completedAt->toISOString(),
+                ))->assertCreated();
+            }
+        }
+
+        $this->artisan('encoin:award-weekly-bonuses')->assertSuccessful();
+        $this->assertSame(0, EnCoinEntry::query()->where('reason', 'weekly_bonus')->count());
     }
 
     public function test_partial_results_and_historical_repeats_do_not_earn_coins(): void
