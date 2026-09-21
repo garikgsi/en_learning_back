@@ -11,6 +11,27 @@ cat > "$test_dir/bin/git" <<'MOCK_GIT'
 #!/bin/bash
 printf 'git %s\n' "$*" >> "$PUBLICATION_TEST_LOG"
 case "$1" in
+    config)
+        if [[ "$2 $3 $4" == '--global --get-all safe.directory' ]]; then
+            if [[ -f "$PUBLICATION_TEST_STATE/safe-directories" ]]; then
+                cat "$PUBLICATION_TEST_STATE/safe-directories"
+                exit 0
+            fi
+            exit 1
+        fi
+        if [[ "$2 $3 $4" == '--global --add safe.directory' ]]; then
+            printf '%s\n' "$5" >> "$PUBLICATION_TEST_STATE/safe-directories"
+            exit 0
+        fi
+        exit 1
+        ;;
+    fetch)
+        if [[ ! -f "$PUBLICATION_TEST_STATE/safe-directories" ]] \
+            || ! grep -Fqx -- "$PWD" "$PUBLICATION_TEST_STATE/safe-directories"; then
+            printf "fatal: detected dubious ownership in repository at '%s'\n" "$PWD" >&2
+            exit 128
+        fi
+        ;;
     merge-base)
         if [[ "${PUBLICATION_TEST_CASE:-}" == 'diverged' ]]; then exit 1; fi
         ;;
@@ -56,7 +77,9 @@ mkdir "$PUBLICATION_TEST_STATE"
 export PUBLICATION_TEST_CASE='success'
 
 bash "$test_dir/publish-backend.sh" "$project_dir" > "$test_dir/output.log" 2>&1
-cat > "$test_dir/expected.log" <<'EXPECTED'
+cat > "$test_dir/expected.log" <<EXPECTED
+git config --global --get-all safe.directory
+git config --global --add safe.directory $project_dir
 git fetch origin
 git checkout main
 git diff --quiet
@@ -74,6 +97,13 @@ docker compose exec -T app php artisan queue:restart
 EXPECTED
 diff -u "$test_dir/expected.log" "$PUBLICATION_TEST_LOG"
 grep -q 'completed successfully' "$test_dir/output.log"
+grep -q 'Registered the backend repository as a Git safe directory' "$test_dir/output.log"
+
+: > "$PUBLICATION_TEST_LOG"
+bash "$test_dir/publish-backend.sh" "$project_dir" > "$test_dir/output.log" 2>&1
+grep -q '^git config --global --get-all safe.directory$' "$PUBLICATION_TEST_LOG"
+! grep -q '^git config --global --add safe.directory ' "$PUBLICATION_TEST_LOG"
+grep -q '^git fetch origin$' "$PUBLICATION_TEST_LOG"
 
 for PUBLICATION_TEST_CASE in migration-fails diverged dirty; do
     export PUBLICATION_TEST_CASE

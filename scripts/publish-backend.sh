@@ -13,6 +13,13 @@ trap cleanup EXIT
 trap 'printf "Backend publication failed at line %s.\n" "$LINENO" >&2' ERR
 
 project_dir=${1:-/var/www/docker/en_learning_back}
+project_dir=$(cd -- "$project_dir" && pwd -P)
+
+if ! git config --global --get-all safe.directory | grep -Fqx -- "$project_dir"; then
+    git config --global --add safe.directory "$project_dir"
+    printf 'Registered the backend repository as a Git safe directory: %s\n' "$project_dir"
+fi
+
 cd -- "$project_dir"
 
 install_known_compose_override() {
