@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\ExerciseTypeCode;
 use App\Enums\UserRole;
+use App\Models\EnCoinEntry;
 use App\Models\Exercise;
 use App\Models\User;
 use App\Models\Word;
@@ -41,12 +42,27 @@ class AdminDailyExerciseControllerTest extends TestCase
     {
         $user = User::factory()->create(['name' => 'Анна']);
         $user->info()->create(['first_grade_year' => now()->year - 5]);
+        EnCoinEntry::query()->create([
+            'user_id' => $user->id,
+            'amount' => 12,
+            'kopecks_per_coin' => 1000,
+            'reason' => 'daily',
+            'source_key' => 'test-credit',
+        ]);
+        EnCoinEntry::query()->create([
+            'user_id' => $user->id,
+            'amount' => -5,
+            'kopecks_per_coin' => 1000,
+            'reason' => 'withdrawal',
+            'source_key' => 'test-withdrawal',
+        ]);
         $this->loginAdmin();
         $response = $this->getJson('/api/v1/admin/users')->assertOk();
         $item = collect($response->json('items'))->firstWhere('id', $user->id);
-        $this->assertSame(['id', 'name', 'phone', 'grade'], array_keys($item));
+        $this->assertSame(['id', 'name', 'phone', 'grade', 'totalEarnedCoins'], array_keys($item));
         $this->assertSame(5, $item['grade']);
         $this->assertSame($user->phone, $item['phone']);
+        $this->assertSame(12, $item['totalEarnedCoins']);
     }
 
     public function test_manual_assignment_preserves_all_selected_phrases_and_any_grade_in_order(): void

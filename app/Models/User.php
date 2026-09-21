@@ -22,6 +22,7 @@ use Illuminate\Notifications\Notifiable;
  * @property UserRole $role
  * @property-read int|string|null $enc_balance
  * @property-read int|string|null $enc_reserved
+ * @property-read int|string|null $total_earned_coins
  */
 #[Fillable(['phone', 'name', 'avatar_path'])]
 #[Hidden(['pin_hash'])]

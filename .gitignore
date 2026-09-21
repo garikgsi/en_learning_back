@@ -3,6 +3,7 @@
 .env
 .env.backup
 .env.production
+/compose.override.yaml
 .phpactor.json
 .phpunit.result.cache
 /.codex

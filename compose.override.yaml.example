@@ -1,0 +1,25 @@
+# Copy this file to compose.override.yaml on the production server.
+# Local settings are ignored by Git and loaded automatically by Docker Compose.
+x-audio-bind: &audio-bind
+  type: bind
+  source: ./storage/app/dictionary/audio
+  target: /var/www/html/storage/app/dictionary/audio
+
+services:
+  app:
+    volumes:
+      - *audio-bind
+
+  scheduler:
+    volumes:
+      - *audio-bind
+
+  queue:
+    volumes:
+      - *audio-bind
+      - type: bind
+        source: ./storage/app/private/firebase/service-account.json
+        target: /run/secrets/firebase-service-account.json
+        read_only: true
+        bind:
+          create_host_path: false

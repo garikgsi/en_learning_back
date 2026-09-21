@@ -4,9 +4,8 @@
 Compose и внешним HTTPS reverse proxy. Фронтенд рекомендуется отдавать с того же
 домена, а запросы `/api` проксировать в backend.
 
-> `compose.yaml` предназначен для разработки. В нём примонтированы исходники,
-> включён Xdebug, опубликован порт PostgreSQL и запущен pgAdmin. Не запускайте
-> этот файл в production без production override и ограничения сетевого доступа.
+`compose.yaml` содержит production-сервисы. Development-конфигурация находится
+в `compose.yaml.dev`.
 
 ## Требования к серверу
 
@@ -18,6 +17,28 @@ Compose и внешним HTTPS reverse proxy. Фронтенд рекоменд
 - настроенное резервное копирование PostgreSQL.
 
 ## Production-конфигурация
+
+### Настройки конкретного сервера
+
+Не изменяйте отслеживаемый `compose.yaml` на сервере и не создавайте там коммиты
+с настройками окружения. Используйте `.env` и игнорируемый `compose.override.yaml`.
+Docker Compose автоматически объединяет этот файл с `compose.yaml`.
+
+Пример для текущего production-сервера:
+
+```bash
+cp compose.override.yaml.example compose.override.yaml
+```
+
+Он сохраняет аудио в `./storage/app/dictionary/audio` для `app`, `scheduler` и
+`queue` и подключает Firebase-ключ к `queue` только для чтения. Ключ должен
+существовать в `./storage/app/private/firebase/service-account.json`;
+`GOOGLE_APPLICATION_CREDENTIALS` внутри контейнера остаётся
+`/run/secrets/firebase-service-account.json`. Файл ключа не хранится в Git.
+Не удаляйте существующие аудиофайлы и Docker volumes при переходе на override.
+
+Если `compose.yaml` уже изменён, сначала сохраните его резервную копию и сравните
+настройки с примером. После переноса восстановите отслеживаемый файл из Git.
 
 Создайте `.env` из `.env.example` непосредственно на сервере:
 
@@ -133,6 +154,38 @@ docker compose exec app php artisan queue:work --sleep=3 --tries=3 --timeout=90
 ```bash
 docker compose exec app php artisan queue:restart
 ```
+
+## Скрипт публикации
+
+Скрипт `scripts/publish-backend.sh` обновляет `main` через fast-forward, собирает
+и запускает сервисы, устанавливает production-зависимости, очищает кеши, выполняет
+`php artisan migrate --force`, обновляет кеши Laravel и перезапускает очередь.
+Выполненные миграции повторно не запускаются. Скрипт останавливается при ошибке,
+включая ошибку миграции, и не сообщает об успешной публикации.
+
+Публикация также останавливается до сборки, если есть изменения отслеживаемых
+файлов или локальные коммиты, отсутствующие в `origin/main`. Серверные настройки
+хранятся в `.env` и `compose.override.yaml`; скрипт не выполняет автоматические
+merge, reset, откаты миграций или удаление volumes.
+
+Скрипт публикации на сервере хранится отдельно от проекта. Содержимое
+`scripts/publish-backend.sh` используется как шаблон для этого внешнего файла.
+По умолчанию он переходит в `/var/www/docker/en_learning_back` независимо от
+своего расположения. Не заменяйте внешний скрипт ссылкой на файл в репозитории.
+
+Например, если внешний скрипт находится в `/root/publish-backend.sh`:
+
+```bash
+bash /root/publish-backend.sh
+```
+
+Для другого каталога проекта передайте путь первым аргументом:
+
+```bash
+bash /root/publish-backend.sh /path/to/en_learning_back
+```
+
+Перед обновлением сохраняйте резервную копию базы.
 
 ## Обновление версии
 

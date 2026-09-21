@@ -18,12 +18,18 @@ class AdminDailyExerciseController extends Controller
         abort_unless($request->user() instanceof User && $request->user()->isAdmin(), 403);
 
         return response()->json([
-            'items' => User::query()->with('info')->orderBy('name')->orderBy('id')->get()
+            'items' => User::query()
+                ->with('info')
+                ->withSum([
+                    'enCoinEntries as total_earned_coins' => fn ($query) => $query->where('amount', '>', 0),
+                ], 'amount')
+                ->orderBy('name')->orderBy('id')->get()
                 ->map(fn (User $user): array => [
                     'id' => $user->id,
                     'name' => $user->name,
                     'phone' => $user->phone,
                     'grade' => $user->grade,
+                    'totalEarnedCoins' => (int) ($user->total_earned_coins ?? 0),
                 ])->all(),
         ]);
     }
