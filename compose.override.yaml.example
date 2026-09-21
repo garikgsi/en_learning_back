@@ -17,9 +17,4 @@ services:
   queue:
     volumes:
       - *audio-bind
-      - type: bind
-        source: ./storage/app/private/firebase/service-account.json
-        target: /run/secrets/firebase-service-account.json
-        read_only: true
-        bind:
-          create_host_path: false
+      - ./storage/app/private/firebase/service-account.json:/run/secrets/firebase-service-account.json:ro

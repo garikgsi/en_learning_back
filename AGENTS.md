@@ -46,8 +46,11 @@
   and restarts queue workers. The server publication script is stored outside
   the project; `scripts/publish-backend.sh` is its repository template. The
   script must change to `/var/www/docker/en_learning_back` independently of
-  its own location. It stops on errors and rejects local changes to tracked
-  files or server commits absent from `origin/main`.
+  its own location and refreshes its external copy from the template after a
+  successful fast-forward. It stops on errors and rejects unknown local changes
+  to tracked files or server commits absent from `origin/main`. It may migrate the
+  one known legacy `compose.yaml` customization only after removing the two
+  expected bind mounts produces an exact match with the tracked file.
 - For an ordinary backend deployment, do not repeat the individual shell
   commands. Tell the user only: `запусти скрипт публикации на бэке`.
 - Provide additional production commands only when a release requires an
