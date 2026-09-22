@@ -36,6 +36,7 @@ class EnCoinBalanceChanged extends Notification implements StoresInNotificationJ
             'daily' => 'за ежедневное задание',
             'weekly' => 'за еженедельное задание',
             'weekly_bonus' => 'за выполнение всех заданий недели',
+            'grammar_race_reward' => 'за победу в грамматической гонке',
             default => '',
         };
         $body = $withdrawal
@@ -51,6 +52,9 @@ class EnCoinBalanceChanged extends Notification implements StoresInNotificationJ
         ];
         if ($this->entry->exercise_id !== null) {
             $data['exerciseId'] = (int) $this->entry->exercise_id;
+        }
+        if ($this->entry->grammar_race_session_id !== null) {
+            $data['grammarRaceSessionId'] = $this->entry->grammar_race_session_id;
         }
         if ($this->monetizationRequestId !== null) {
             $data['monetizationRequestId'] = $this->monetizationRequestId;

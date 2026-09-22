@@ -84,6 +84,18 @@ class User extends Authenticatable
         return $this->hasMany(MonetizationRequest::class);
     }
 
+    /** @return HasMany<GrammarRaceSession, $this> */
+    public function grammarRaceSessions(): HasMany
+    {
+        return $this->hasMany(GrammarRaceSession::class);
+    }
+
+    /** @return HasMany<GrammarRaceProfile, $this> */
+    public function grammarRaceProfiles(): HasMany
+    {
+        return $this->hasMany(GrammarRaceProfile::class);
+    }
+
     /**
      * @return HasMany<UserNotification, $this>
      */

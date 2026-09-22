@@ -8,6 +8,7 @@ use App\Models\EnCoinEntry;
 use App\Models\EnCoinRate;
 use App\Models\Exercise;
 use App\Models\ExerciseComplete;
+use App\Models\GrammarRaceSession;
 use App\Models\MonetizationRequest;
 use App\Models\User;
 use App\Notifications\EnCoinBalanceChanged;
@@ -17,6 +18,44 @@ use Illuminate\Validation\ValidationException;
 
 class EnCoinService
 {
+    public function chargeGrammarRace(User $user, GrammarRaceSession $session): EnCoinEntry
+    {
+        return EnCoinEntry::query()->firstOrCreate(
+            [
+                'user_id' => $user->id,
+                'source_key' => 'grammar-race:'.$session->id.':entry',
+            ],
+            [
+                'amount' => -$session->entry_cost,
+                'kopecks_per_coin' => $this->rate()->kopecks_per_coin,
+                'reason' => 'grammar_race_entry',
+                'grammar_race_session_id' => $session->id,
+            ],
+        );
+    }
+
+    public function rewardGrammarRace(User $user, GrammarRaceSession $session): EnCoinEntry
+    {
+        $entry = EnCoinEntry::query()->firstOrCreate(
+            [
+                'user_id' => $user->id,
+                'source_key' => 'grammar-race:'.$session->id.':reward',
+            ],
+            [
+                'amount' => $session->reward,
+                'kopecks_per_coin' => $this->rate()->kopecks_per_coin,
+                'reason' => 'grammar_race_reward',
+                'grammar_race_session_id' => $session->id,
+            ],
+        );
+
+        if ($entry->wasRecentlyCreated) {
+            $this->notifyBalanceChanged($user, $entry);
+        }
+
+        return $entry;
+    }
+
     public function rewardCompletion(Exercise $exercise, ExerciseComplete $completion, bool $alreadyCompleted): void
     {
         if ($alreadyCompleted || ! in_array((int) $exercise->type_id, [

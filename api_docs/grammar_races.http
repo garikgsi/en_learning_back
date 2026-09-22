@@ -1,0 +1,92 @@
+### Get personal-pronoun race availability and active session
+# The day resets in Europe/Moscow. The first attempt is free; the next two cost
+# one EnCoin each. An abandoned or unfinished session consumes its attempt.
+# activeSession contains the complete offline-capable task pack when present.
+# @name getPersonalPronounRaceStatus
+GET {{baseUrl}}/api/v1/grammar-race-games/personal_pronouns/status
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+### Start an idempotent personal-pronoun race session
+# Persist clientRequestId before sending. If the response is lost after a paid
+# attempt is charged, retrying the same request returns the same session and
+# never charges again. Only one session of this game can be active at a time.
+# The response contains 50 balanced tasks and precomputed bot behaviour, so the
+# match can continue offline. Task positions repeat from 1 after pack exhaustion.
+# @name startPersonalPronounRace
+POST {{baseUrl}}/api/v1/grammar-race-games/personal_pronouns/sessions
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "clientRequestId": "01993a00-1234-7000-8000-123456789abc"
+}
+
+### Restore a grammar-race session
+# Only the owning user can access the session.
+# @name getGrammarRaceSession
+GET {{baseUrl}}/api/v1/grammar-race-sessions/01993a00-1234-7000-8000-123456789abc
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+### Complete a grammar-race session, including after an offline match
+# The server derives every round outcome from its stored task, bot answer and
+# timing. A correct answer at exactly botDelayMs wins the tie. When the bot is
+# wrong, the answer window is 5 seconds for phrases and 10 for sentences.
+# Save this payload in an offline queue and retry it unchanged. First acceptance
+# returns 201; an identical retry returns 200. A student win awards two EnCoin
+# exactly once. A valid paid or free result has no synchronization expiry.
+# The answers below are illustrative: use the task order and answers returned by
+# the start request. The submitted rounds must end exactly on the winning point.
+# @name completeGrammarRaceSession
+POST {{baseUrl}}/api/v1/grammar-race-sessions/01993a00-1234-7000-8000-123456789abc/complete
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "clientResultId": "01993a10-1234-7000-8000-123456789abc",
+    "completedAt": "2026-09-22T12:05:00Z",
+    "rounds": [
+        {
+            "taskPosition": 1,
+            "playerAnswer": "he",
+            "playerAnswerMs": 2450
+        },
+        {
+            "taskPosition": 2,
+            "playerAnswer": "she",
+            "playerAnswerMs": 2100
+        },
+        {
+            "taskPosition": 3,
+            "playerAnswer": "it",
+            "playerAnswerMs": 1800
+        },
+        {
+            "taskPosition": 4,
+            "playerAnswer": "we",
+            "playerAnswerMs": 2300
+        },
+        {
+            "taskPosition": 5,
+            "playerAnswer": "they",
+            "playerAnswerMs": 1950
+        }
+    ]
+}
+
+### Abandon a grammar-race session after the user's confirmation
+# Abandoning is a loss. The daily attempt remains consumed and a paid entry is
+# not refunded. This request is idempotent and can also be queued offline.
+# @name abandonGrammarRaceSession
+POST {{baseUrl}}/api/v1/grammar-race-sessions/01993a00-1234-7000-8000-123456789abc/abandon
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "clientResultId": "01993a20-1234-7000-8000-123456789abc",
+    "abandonedAt": "2026-09-22T12:03:00Z"
+}

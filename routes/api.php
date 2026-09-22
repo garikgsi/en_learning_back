@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\Auth\RegisterController;
 use App\Http\Controllers\Api\V1\BalanceController;
 use App\Http\Controllers\Api\V1\DictionaryController;
 use App\Http\Controllers\Api\V1\ExerciseController;
+use App\Http\Controllers\Api\V1\GrammarRaceController;
 use App\Http\Controllers\Api\V1\MonetizationController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\UpdatePinController;
@@ -83,5 +84,13 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/exercises/{exercise}', [ExerciseController::class, 'show'])
             ->whereNumber('exercise');
         Route::post('/exercises/complete', [ExerciseController::class, 'complete']);
+        Route::get('/grammar-race-games/{gameCode}/status', [GrammarRaceController::class, 'status']);
+        Route::post('/grammar-race-games/{gameCode}/sessions', [GrammarRaceController::class, 'start']);
+        Route::get('/grammar-race-sessions/{session}', [GrammarRaceController::class, 'show'])
+            ->whereUuid('session');
+        Route::post('/grammar-race-sessions/{session}/complete', [GrammarRaceController::class, 'complete'])
+            ->whereUuid('session');
+        Route::post('/grammar-race-sessions/{session}/abandon', [GrammarRaceController::class, 'abandon'])
+            ->whereUuid('session');
     });
 });
