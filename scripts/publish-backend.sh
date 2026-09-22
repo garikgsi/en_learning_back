@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 
 temporary_dir=''
+running_script=$(readlink -f -- "${BASH_SOURCE[0]}")
 
 cleanup() {
     if [[ -n "$temporary_dir" && -d "$temporary_dir" ]]; then
@@ -103,7 +104,6 @@ git pull --ff-only origin main
 
 repository_script_path="$project_dir/scripts/publish-backend.sh"
 if [[ -f "$repository_script_path" ]]; then
-    running_script=$(readlink -f -- "${BASH_SOURCE[0]}")
     repository_script=$(readlink -f -- "$repository_script_path")
     if [[ "$running_script" != "$repository_script" ]] \
         && ! cmp -s "$running_script" "$repository_script"; then

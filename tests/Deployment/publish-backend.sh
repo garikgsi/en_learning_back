@@ -6,6 +6,7 @@ test_dir=$(mktemp -d)
 trap 'rm -rf -- "$test_dir"' EXIT
 mkdir "$test_dir/bin"
 cp "$project_dir/scripts/publish-backend.sh" "$test_dir/publish-backend.sh"
+printf '\n# Outdated external copy used to verify self-refresh.\n' >> "$test_dir/publish-backend.sh"
 
 cat > "$test_dir/bin/git" <<'MOCK_GIT'
 #!/bin/bash
@@ -76,7 +77,7 @@ export PUBLICATION_TEST_STATE="$test_dir/state"
 mkdir "$PUBLICATION_TEST_STATE"
 export PUBLICATION_TEST_CASE='success'
 
-bash "$test_dir/publish-backend.sh" "$project_dir" > "$test_dir/output.log" 2>&1
+(cd "$test_dir" && bash ./publish-backend.sh "$project_dir") > "$test_dir/output.log" 2>&1
 cat > "$test_dir/expected.log" <<EXPECTED
 git config --global --get-all safe.directory
 git config --global --add safe.directory $project_dir
@@ -98,6 +99,8 @@ EXPECTED
 diff -u "$test_dir/expected.log" "$PUBLICATION_TEST_LOG"
 grep -q 'completed successfully' "$test_dir/output.log"
 grep -q 'Registered the backend repository as a Git safe directory' "$test_dir/output.log"
+grep -q 'Updated the external publication script from the repository template' "$test_dir/output.log"
+cmp -s "$project_dir/scripts/publish-backend.sh" "$test_dir/publish-backend.sh"
 
 : > "$PUBLICATION_TEST_LOG"
 bash "$test_dir/publish-backend.sh" "$project_dir" > "$test_dir/output.log" 2>&1
