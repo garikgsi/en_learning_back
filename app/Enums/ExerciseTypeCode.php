@@ -8,6 +8,7 @@ enum ExerciseTypeCode: int
     case weekly = 2;
     case user = 3;
     case plural = 4;
+    case userPlural = 5;
 
     public function title(): string
     {
@@ -16,6 +17,7 @@ enum ExerciseTypeCode: int
             self::weekly => 'Недельные',
             self::user => 'Пользовательское',
             self::plural => 'Множественное число',
+            self::userPlural => 'Пользовательское: множественное число',
         };
     }
 }

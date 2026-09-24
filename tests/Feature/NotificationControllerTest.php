@@ -67,9 +67,31 @@ class NotificationControllerTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_user_can_mark_all_their_notifications_as_read(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $this->createNotification($user, 'Первое');
+        $this->createNotification($user, 'Второе');
+        $foreign = $this->createNotification($otherUser, 'Чужое');
+
+        $this->withToken($this->accessToken($user))
+            ->patchJson('/api/v1/notifications/read')
+            ->assertOk()
+            ->assertJsonPath('unreadCount', 0)
+            ->assertJsonPath('readAt', fn ($value): bool => is_string($value));
+
+        $this->assertSame(0, UserNotification::query()
+            ->where('user_id', $user->id)
+            ->whereNull('read_at')
+            ->count());
+        $this->assertNull($foreign->refresh()->read_at);
+    }
+
     public function test_notification_endpoints_require_authentication(): void
     {
         $this->getJson('/api/v1/notifications')->assertUnauthorized();
+        $this->patchJson('/api/v1/notifications/read')->assertUnauthorized();
     }
 
     private function createNotification(

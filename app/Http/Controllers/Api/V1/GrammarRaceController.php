@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\GrammarRaceGameCode;
+use App\Enums\GrammarRacePlayMode;
 use App\Exceptions\GrammarRaceException;
 use App\Exceptions\IdempotencyKeyReusedException;
 use App\Http\Controllers\Controller;
@@ -43,6 +44,7 @@ class GrammarRaceController extends Controller
                 $this->authenticatedUser($request),
                 $this->gameCode($gameCode),
                 $request->validated('clientRequestId'),
+                GrammarRacePlayMode::from($request->validated('playMode')),
             );
         } catch (IdempotencyKeyReusedException) {
             return $this->idempotencyError();

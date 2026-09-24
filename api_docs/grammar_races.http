@@ -1,7 +1,17 @@
+### Get achievement medals for all grammar-race games
+# Games without a profile start at level 1. medalTier is a normalized colour
+# category from 1 (starting medal) through 5 (the maximum level for that game).
+# levelUp describes the shared requirements for advancing to the next level.
+# @name getGrammarRaceAchievements
+GET {{baseUrl}}/api/v1/grammar-race-achievements
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
 ### Get personal-pronoun race availability and active session
 # The day resets in Europe/Moscow. The first attempt is free; the next two cost
 # one EnCoin each. An abandoned or unfinished session consumes its attempt.
-# activeSession contains the complete offline-capable task pack when present.
+# activeSession contains only an unfinished competitive task pack. Training
+# results are local-only and training sessions are not restored by this status.
 # @name getPersonalPronounRaceStatus
 GET {{baseUrl}}/api/v1/grammar-race-games/personal_pronouns/status
 Accept: application/json
@@ -10,9 +20,10 @@ Authorization: Bearer {{accessToken}}
 ### Start an idempotent personal-pronoun race session
 # Persist clientRequestId before sending. If the response is lost after a paid
 # attempt is charged, retrying the same request returns the same session and
-# never charges again. Only one session of this game can be active at a time.
+# never charges again. Only one competitive session can be active at a time.
 # The response contains 50 balanced tasks and precomputed bot behaviour, so the
 # match can continue offline. Task positions repeat from 1 after pack exhaustion.
+# Each task contains a type, renderer payload and its own option id/label list.
 # @name startPersonalPronounRace
 POST {{baseUrl}}/api/v1/grammar-race-games/personal_pronouns/sessions
 Accept: application/json
@@ -20,7 +31,65 @@ Content-Type: application/json
 Authorization: Bearer {{accessToken}}
 
 {
-    "clientRequestId": "01993a00-1234-7000-8000-123456789abc"
+    "clientRequestId": "01993a00-1234-7000-8000-123456789abc",
+    "playMode": "competitive"
+}
+
+### Get possessive-pronoun race availability and active session
+# Available from grade 5. It has five sentence-only difficulty levels. Daily
+# attempts, progress and active sessions are independent from the personal game.
+# @name getPossessivePronounRaceStatus
+GET {{baseUrl}}/api/v1/grammar-race-games/possessive_pronouns/status
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+### Start an idempotent possessive-pronoun race session
+# The first competitive attempt is free; the next two cost one EnCoin each.
+# Use playMode=training for unlimited play without attempts, rewards or progress.
+# @name startPossessivePronounRace
+POST {{baseUrl}}/api/v1/grammar-race-games/possessive_pronouns/sessions
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "clientRequestId": "01993a00-1234-7000-8000-123456789abe",
+    "playMode": "competitive"
+}
+
+### Get article race availability and active session
+# Available from grade 3. Levels 1-5 use words and short phrases; levels 6-10
+# use full sentences. Incorrect and missed answers include child-friendly feedback.
+# @name getArticleRaceStatus
+GET {{baseUrl}}/api/v1/grammar-race-games/articles/status
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+### Start an idempotent article race session
+# Use playMode=training for unlimited play without attempts, rewards or progress.
+# @name startArticleRace
+POST {{baseUrl}}/api/v1/grammar-race-games/articles/sessions
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "clientRequestId": "01993a00-1234-7000-8000-123456789abf",
+    "playMode": "competitive"
+}
+
+### Start an unlimited training session (no attempt, coin or reward)
+# The client does not upload training results. A previously unfinished training
+# session is closed automatically when another session is started.
+# @name startPronounTraining
+POST {{baseUrl}}/api/v1/grammar-race-games/personal_pronouns/sessions
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "clientRequestId": "01993a00-1234-7000-8000-123456789abd",
+    "playMode": "training"
 }
 
 ### Restore a grammar-race session
@@ -32,8 +101,10 @@ Authorization: Bearer {{accessToken}}
 
 ### Complete a grammar-race session, including after an offline match
 # The server derives every round outcome from its stored task, bot answer and
-# timing. A correct answer at exactly botDelayMs wins the tie. When the bot is
-# wrong, the answer window is 5 seconds for phrases and 10 for sentences.
+# timing. A correct answer at exactly botDelayMs wins the tie. After an early
+# wrong answer, the bot answers in 500 ms. If the bot is also wrong, the student
+# gets a second attempt until the original botDelayMs plus the 5-second phrase
+# or 10-second sentence window.
 # Save this payload in an offline queue and retry it unchanged. First acceptance
 # returns 201; an identical retry returns 200. A student win awards two EnCoin
 # exactly once. A valid paid or free result has no synchronization expiry.
@@ -52,7 +123,9 @@ Authorization: Bearer {{accessToken}}
         {
             "taskPosition": 1,
             "playerAnswer": "he",
-            "playerAnswerMs": 2450
+            "playerAnswerMs": 2450,
+            "secondPlayerAnswer": null,
+            "secondPlayerAnswerMs": null
         },
         {
             "taskPosition": 2,

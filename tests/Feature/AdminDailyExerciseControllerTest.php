@@ -45,6 +45,7 @@ class AdminDailyExerciseControllerTest extends TestCase
         Storage::disk('public')->put('avatars/anna.webp', 'avatar');
         $user = User::factory()->create(['name' => 'Анна', 'avatar_path' => 'avatars/anna.webp']);
         $user->info()->create(['first_grade_year' => now()->year - 5]);
+        $technicalUser = User::factory()->create(['is_test' => true]);
         EnCoinEntry::query()->create([
             'user_id' => $user->id,
             'amount' => 12,
@@ -62,11 +63,12 @@ class AdminDailyExerciseControllerTest extends TestCase
         $this->loginAdmin();
         $response = $this->getJson('/api/v1/admin/users')->assertOk();
         $item = collect($response->json('items'))->firstWhere('id', $user->id);
-        $this->assertSame(['id', 'name', 'phone', 'grade', 'avatar', 'totalEarnedCoins'], array_keys($item));
+        $this->assertSame(['id', 'name', 'phone', 'grade', 'avatar', 'balance'], array_keys($item));
         $this->assertSame(5, $item['grade']);
         $this->assertSame($user->phone, $item['phone']);
         $this->assertStringEndsWith('/storage/avatars/anna.webp', $item['avatar']);
-        $this->assertSame(12, $item['totalEarnedCoins']);
+        $this->assertSame(7, $item['balance']);
+        $this->assertNotContains($technicalUser->id, $response->json('items.*.id'));
     }
 
     public function test_manual_assignment_preserves_all_selected_phrases_and_any_grade_in_order(): void

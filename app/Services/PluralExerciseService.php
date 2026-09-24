@@ -29,6 +29,28 @@ class PluralExerciseService
             throw new DomainException('User info is required to create an exercise.');
         }
 
+        return $this->createForType($user, $dueDate, $pairsCount, ExerciseTypeCode::plural);
+    }
+
+    public function createUser(User $user, CarbonInterface $dueDate, int $pairsCount = 15): Exercise
+    {
+        return $this->createForType($user, $dueDate, $pairsCount, ExerciseTypeCode::userPlural);
+    }
+
+    private function createForType(
+        User $user,
+        CarbonInterface $dueDate,
+        int $pairsCount,
+        ExerciseTypeCode $type,
+    ): Exercise {
+        if ($pairsCount < 1) {
+            throw new InvalidArgumentException('Pairs count must be at least 1.');
+        }
+
+        if ($user->grade === null) {
+            throw new DomainException('User info is required to create an exercise.');
+        }
+
         $wordIds = Plural::query()
             ->inRandomOrder()
             ->limit($pairsCount)
@@ -37,7 +59,7 @@ class PluralExerciseService
             ->all();
 
         return $this->exerciseService->createWithWords(
-            ExerciseTypeCode::plural,
+            $type,
             $user,
             $dueDate,
             $wordIds,

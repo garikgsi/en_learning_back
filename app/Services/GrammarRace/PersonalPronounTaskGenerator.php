@@ -4,40 +4,51 @@ namespace App\Services\GrammarRace;
 
 use App\Enums\GrammarRaceTaskMode;
 use App\Enums\PersonalPronoun;
+use App\Services\GrammarRace\Contracts\GrammarRaceTaskGenerator;
+use App\Services\GrammarRace\Data\GeneratedGrammarRaceTask;
 use App\Services\GrammarRace\Data\PersonalPronounLexicon;
 use InvalidArgumentException;
 
-class PersonalPronounTaskGenerator
+class PersonalPronounTaskGenerator implements GrammarRaceTaskGenerator
 {
-    /**
-     * @return list<array{
-     *     position: int,
-     *     prompt: string,
-     *     translation: string|null,
-     *     correct_answer: string,
-     *     bot_answer: string,
-     *     bot_delay_ms: int
-     * }>
-     */
-    public function generate(int $difficultyLevel, int $count): array
-    {
-        $settings = config("grammar_race.levels.{$difficultyLevel}");
+    /** @var array<string, string> */
+    private const SURNAME_TRANSLATIONS = [
+        'Adams' => 'Адамс',
+        'Allen' => 'Аллен',
+        'Baker' => 'Бейкер',
+        'Brown' => 'Браун',
+        'Clark' => 'Кларк',
+        'Green' => 'Грин',
+        'Hall' => 'Холл',
+        'King' => 'Кинг',
+        'Scott' => 'Скотт',
+        'Smith' => 'Смит',
+        'Taylor' => 'Тейлор',
+        'White' => 'Уайт',
+        'Wilson' => 'Уилсон',
+    ];
 
-        if (! is_array($settings)) {
-            throw new InvalidArgumentException("Unknown grammar race level {$difficultyLevel}.");
+    /**
+     * @param  array<string, mixed>  $level
+     * @return list<GeneratedGrammarRaceTask>
+     */
+    public function generate(array $level, int $count, float $reactionMultiplier = 1): array
+    {
+        if (! isset($level['mode'], $level['content_level'], $level['bot_error_percent'], $level['bot_min_delay_ms'], $level['bot_max_delay_ms'])) {
+            throw new InvalidArgumentException('Incomplete personal-pronoun level configuration.');
         }
 
         $pronouns = $this->balancedPronouns($count);
         $tasks = [];
         $usedPrompts = [];
 
-        foreach ($pronouns as $index => $pronoun) {
+        foreach ($pronouns as $pronoun) {
             $task = null;
 
             for ($attempt = 0; $attempt < 20; $attempt++) {
-                $task = $settings['mode'] === GrammarRaceTaskMode::phrase->value
-                    ? $this->phrase($pronoun, (int) $settings['content_level'], (bool) $settings['show_translation'])
-                    : $this->sentence($pronoun, (int) $settings['content_level']);
+                $task = $level['mode'] === GrammarRaceTaskMode::phrase->value
+                    ? $this->phrase($pronoun, (int) $level['content_level'], (bool) $level['show_translation'])
+                    : $this->sentence($pronoun, (int) $level['content_level']);
 
                 if (! isset($usedPrompts[$task['prompt']])) {
                     break;
@@ -45,19 +56,41 @@ class PersonalPronounTaskGenerator
             }
 
             $usedPrompts[$task['prompt']] = true;
-            $tasks[] = [
-                'position' => $index + 1,
-                ...$task,
-                'correct_answer' => $pronoun->value,
-                'bot_answer' => $this->botAnswer($pronoun, (int) $settings['bot_error_percent'])->value,
-                'bot_delay_ms' => random_int(
-                    (int) $settings['bot_min_delay_ms'],
-                    (int) $settings['bot_max_delay_ms'],
+            $tasks[] = new GeneratedGrammarRaceTask(
+                type: 'single_choice',
+                payload: [
+                    'text' => $task['prompt'],
+                    'translation' => $task['translation'],
+                    'feedback' => [
+                        'correctText' => $level['mode'] === GrammarRaceTaskMode::phrase->value
+                            ? "{$task['prompt']} → {$pronoun->value}"
+                            : str_replace('___', ucfirst($pronoun->value), $task['prompt']),
+                        'translation' => $level['mode'] === GrammarRaceTaskMode::phrase->value
+                            ? $this->phraseFeedbackTranslation($task, $pronoun)
+                            : $this->pronounTranslation($pronoun),
+                        'explanation' => $this->explanation($pronoun),
+                    ],
+                ],
+                options: $this->options(),
+                correctAnswer: $pronoun->value,
+                botAnswer: $this->botAnswer($pronoun, (int) $level['bot_error_percent'])->value,
+                botDelayMs: random_int(
+                    (int) round($level['bot_min_delay_ms'] * $reactionMultiplier),
+                    (int) round($level['bot_max_delay_ms'] * $reactionMultiplier),
                 ),
-            ];
+            );
         }
 
         return $tasks;
+    }
+
+    /** @return list<array{id: string, label: string}> */
+    private function options(): array
+    {
+        return array_map(
+            fn (PersonalPronoun $pronoun): array => ['id' => $pronoun->value, 'label' => $pronoun->value],
+            PersonalPronoun::cases(),
+        );
     }
 
     /** @return list<PersonalPronoun> */
@@ -116,13 +149,13 @@ class PersonalPronounTaskGenerator
             $title = $male ? 'Mr' : 'Ms';
 
             return [
-                'prompt' => $title.' '.$this->pick(PersonalPronounLexicon::surnames()),
+                'prompt' => $title.' '.$this->pick(array_keys(self::SURNAME_TRANSLATIONS)),
                 'translation' => null,
             ];
         }
 
         return [
-            'prompt' => $this->pick($male ? PersonalPronounLexicon::maleNames() : PersonalPronounLexicon::femaleNames()),
+            'prompt' => $this->pick($male ? $this->maleNames() : $this->femaleNames()),
             'translation' => null,
         ];
     }
@@ -184,8 +217,8 @@ class PersonalPronounTaskGenerator
 
         return [
             'prompt' => $this->pick(array_merge(
-                PersonalPronounLexicon::maleNames(),
-                PersonalPronounLexicon::femaleNames(),
+                $this->maleNames(),
+                $this->femaleNames(),
             )).' and I',
             'translation' => null,
         ];
@@ -343,6 +376,136 @@ class PersonalPronounTaskGenerator
             PersonalPronoun::cases(),
             fn (PersonalPronoun $pronoun): bool => $pronoun !== $correct,
         )));
+    }
+
+    private function explanation(PersonalPronoun $pronoun): string
+    {
+        return match ($pronoun) {
+            PersonalPronoun::he => 'Вместо имени одного мальчика или мужчины используем «он» — he.',
+            PersonalPronoun::she => 'Вместо имени одной девочки или женщины используем «она» — she.',
+            PersonalPronoun::it => 'Вместо названия одного предмета, животного или явления используем «оно» — it.',
+            PersonalPronoun::we => 'Когда говорим «я и ещё кто-то», вместе это «мы», поэтому правильный ответ — we.',
+            PersonalPronoun::they => 'Когда говорим о нескольких людях или предметах без себя, это «они», поэтому правильный ответ — they.',
+        };
+    }
+
+    /** @param array{prompt: string, translation: string|null} $task */
+    private function phraseFeedbackTranslation(array $task, PersonalPronoun $pronoun): string
+    {
+        $translation = $task['translation'] ?? $this->translatePhrase($task['prompt'], $pronoun);
+
+        return "{$translation} → {$this->pronounTranslation($pronoun)}";
+    }
+
+    private function translatePhrase(string $prompt, PersonalPronoun $pronoun): string
+    {
+        foreach ([
+            ...PersonalPronounLexicon::maleRelations(),
+            ...PersonalPronounLexicon::femaleRelations(),
+            ...PersonalPronounLexicon::singularNature(),
+        ] as $item) {
+            if ($item['en'] === $prompt) {
+                return $item['ru'];
+            }
+        }
+
+        $fixed = [
+            'My sister and I' => 'Я и моя сестра',
+            'My brother and I' => 'Я и мой брат',
+            'My friend and I' => 'Я и мой друг',
+            'My friends and I' => 'Я и мои друзья',
+            'Mum and I' => 'Я и мама',
+            'Dad and I' => 'Я и папа',
+            'My friends' => 'Мои друзья',
+            'My mum and dad' => 'Мои мама и папа',
+            'My parents' => 'Мои родители',
+            'The boys and girls' => 'Мальчики и девочки',
+        ];
+        if (isset($fixed[$prompt])) {
+            return $fixed[$prompt];
+        }
+
+        foreach (PersonalPronounLexicon::objects() as $object) {
+            if ($prompt === 'The '.$object['plural']) {
+                return $this->upperFirst($object['ruPlural']);
+            }
+            foreach (['My', 'His', 'Her', 'The'] as $determiner) {
+                if ($prompt !== "{$determiner} {$object['en']}") {
+                    continue;
+                }
+                $russianDeterminer = match ($determiner) {
+                    'My' => match ($object['gender']) {
+                        'm' => 'Мой',
+                        'f' => 'Моя',
+                        default => 'Моё',
+                    },
+                    'His' => 'Его',
+                    'Her' => 'Её',
+                    default => '',
+                };
+
+                return $this->upperFirst(trim("{$russianDeterminer} {$object['ru']}"));
+            }
+        }
+
+        if (str_ends_with($prompt, ' and I')) {
+            return 'Я и '.$this->translateName(substr($prompt, 0, -6));
+        }
+        if (str_contains($prompt, ' and ')) {
+            [$first, $second] = explode(' and ', $prompt, 2);
+
+            return $this->translateName($first).' и '.$this->translateName($second);
+        }
+        if (str_starts_with($prompt, 'Mr ')) {
+            return 'Господин '.$this->translateName(substr($prompt, 3));
+        }
+        if (str_starts_with($prompt, 'Ms ')) {
+            return 'Госпожа '.$this->translateName(substr($prompt, 3));
+        }
+
+        return $this->translateName($prompt);
+    }
+
+    private function translateName(string $name): string
+    {
+        $known = [
+            ...PersonalPronounLexicon::beginnerNameTranslations(),
+            ...self::SURNAME_TRANSLATIONS,
+        ];
+        if (isset($known[$name])) {
+            return $known[$name];
+        }
+
+        return $name;
+    }
+
+    /** @return list<string> */
+    private function maleNames(): array
+    {
+        return array_values(array_intersect(
+            PersonalPronounLexicon::maleNames(),
+            array_keys(PersonalPronounLexicon::beginnerNameTranslations()),
+        ));
+    }
+
+    /** @return list<string> */
+    private function femaleNames(): array
+    {
+        return array_values(array_intersect(
+            PersonalPronounLexicon::femaleNames(),
+            array_keys(PersonalPronounLexicon::beginnerNameTranslations()),
+        ));
+    }
+
+    private function pronounTranslation(PersonalPronoun $pronoun): string
+    {
+        return match ($pronoun) {
+            PersonalPronoun::he => 'он',
+            PersonalPronoun::she => 'она',
+            PersonalPronoun::it => 'это',
+            PersonalPronoun::we => 'мы',
+            PersonalPronoun::they => 'они',
+        };
     }
 
     /** @template T @param list<T> $items @return T */

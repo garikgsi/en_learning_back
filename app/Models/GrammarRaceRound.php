@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\PersonalPronoun;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'task_position',
     'player_answer',
     'player_answer_ms',
+    'second_player_answer',
+    'second_player_answer_ms',
     'outcome',
     'student_score',
     'computer_score',
@@ -31,8 +32,8 @@ class GrammarRaceRound extends Model
         return [
             'sequence' => 'integer',
             'task_position' => 'integer',
-            'player_answer' => PersonalPronoun::class,
             'player_answer_ms' => 'integer',
+            'second_player_answer_ms' => 'integer',
             'student_score' => 'integer',
             'computer_score' => 'integer',
         ];

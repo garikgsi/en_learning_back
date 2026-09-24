@@ -12,6 +12,7 @@ use App\Models\GrammarRaceSession;
 use App\Models\MonetizationRequest;
 use App\Models\User;
 use App\Notifications\EnCoinBalanceChanged;
+use App\Notifications\GrammarRaceEntryCharged;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -20,7 +21,7 @@ class EnCoinService
 {
     public function chargeGrammarRace(User $user, GrammarRaceSession $session): EnCoinEntry
     {
-        return EnCoinEntry::query()->firstOrCreate(
+        $entry = EnCoinEntry::query()->firstOrCreate(
             [
                 'user_id' => $user->id,
                 'source_key' => 'grammar-race:'.$session->id.':entry',
@@ -32,6 +33,13 @@ class EnCoinService
                 'grammar_race_session_id' => $session->id,
             ],
         );
+
+        if ($entry->wasRecentlyCreated) {
+            $balance = (int) $user->enCoinEntries()->sum('amount');
+            $user->notify(new GrammarRaceEntryCharged($entry, $balance, $session));
+        }
+
+        return $entry;
     }
 
     public function rewardGrammarRace(User $user, GrammarRaceSession $session): EnCoinEntry
@@ -164,7 +172,7 @@ class EnCoinService
         return EnCoinRate::query()->findOrFail(1);
     }
 
-    /** @return array{balance: int, reserved: int, available: int, rublesPerCoin: float|int, withdrawalThreshold: int, totalEarnedCoins: int, totalEarnedRubles: float|int} */
+    /** @return array{balance: int, reserved: int, available: int, rublesPerCoin: float|int, withdrawalThreshold: int, hasCompletedDailyThisWeek: bool, totalEarnedCoins: int, totalEarnedRubles: float|int} */
     public function balance(User $user): array
     {
         $balance = (int) EnCoinEntry::query()->where('user_id', $user->id)->sum('amount');
@@ -179,6 +187,7 @@ class EnCoinService
             'totalEarnedCoins' => $earnedCoins,
             'totalEarnedRubles' => (int) $earned / 100,
             'withdrawalThreshold' => (int) config('encoin.withdrawal_threshold'),
+            'hasCompletedDailyThisWeek' => $this->hasCompletedDailyThisWeek($user),
         ];
     }
 
@@ -200,6 +209,11 @@ class EnCoinService
             if ($balance['available'] < $balance['withdrawalThreshold']) {
                 throw ValidationException::withMessages(['coins' => 'Вывод доступен при доступном балансе от 50 EnCoin.']);
             }
+            if (! $balance['hasCompletedDailyThisWeek']) {
+                throw ValidationException::withMessages([
+                    'coins' => 'Для вывода пройдите хотя бы одно ежедневное задание на текущей неделе.',
+                ]);
+            }
             if ($coins > $balance['available']) {
                 throw ValidationException::withMessages(['coins' => 'Недостаточно доступных монет.']);
             }
@@ -210,6 +224,29 @@ class EnCoinService
 
             return ['request' => $request, 'created' => true];
         });
+    }
+
+    private function hasCompletedDailyThisWeek(User $user): bool
+    {
+        $now = CarbonImmutable::now(config('encoin.timezone'));
+        $weekStart = $now->startOfWeek()->startOfDay();
+        $weekEnd = $now->endOfWeek()->endOfDay();
+
+        $exercises = Exercise::query()
+            ->where('user_id', $user->id)
+            ->where('type_id', ExerciseTypeCode::daily->value)
+            ->whereBetween('dueDate', [$weekStart->toDateString(), $weekEnd->toDateString()])
+            ->with([
+                'items',
+                'completions' => fn ($query) => $query
+                    ->whereBetween('completed_at', [$weekStart->utc(), $weekEnd->utc()])
+                    ->with('itemResults'),
+            ])
+            ->get();
+
+        return $exercises->contains(fn (Exercise $exercise): bool => $exercise->completions->contains(
+            fn ($completion): bool => $this->isFullCompletion($exercise, $completion->itemResults),
+        ));
     }
 
     public function process(MonetizationRequest $request, User $admin): MonetizationRequest

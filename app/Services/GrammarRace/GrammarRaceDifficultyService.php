@@ -5,9 +5,12 @@ namespace App\Services\GrammarRace;
 use App\Enums\GrammarRaceGameCode;
 use App\Models\GrammarRaceProfile;
 use App\Models\User;
+use App\Notifications\GrammarRaceLevelUp;
 
 class GrammarRaceDifficultyService
 {
+    public function __construct(private readonly GrammarRaceGameRegistry $games) {}
+
     public function profile(User $user, GrammarRaceGameCode $gameCode): GrammarRaceProfile
     {
         return GrammarRaceProfile::query()->firstOrCreate(
@@ -30,11 +33,12 @@ class GrammarRaceDifficultyService
         $gamesAtLevel = $profile->games_at_level + 1;
         $winsAtLevel = $profile->wins_at_level + ($won ? 1 : 0);
         $currentLevel = $profile->current_level;
+        $previousLevel = $currentLevel;
         $minimumGames = (int) config('grammar_race.level_up.minimum_games');
         $minimumWinRate = (float) config('grammar_race.level_up.minimum_win_rate');
 
         if (
-            $currentLevel < count(config('grammar_race.levels'))
+            $currentLevel < count($this->games->get($gameCode)->levels())
             && $gamesAtLevel >= $minimumGames
             && $winsAtLevel / $gamesAtLevel >= $minimumWinRate
         ) {
@@ -51,6 +55,16 @@ class GrammarRaceDifficultyService
             'games_at_level' => $gamesAtLevel,
             'wins_at_level' => $winsAtLevel,
         ]);
+
+        if ($currentLevel > $previousLevel) {
+            $game = $this->games->get($gameCode);
+            $user->notify(new GrammarRaceLevelUp(
+                $gameCode,
+                $game->title(),
+                $game->rankTitle(),
+                $currentLevel,
+            ));
+        }
 
         return $profile->refresh();
     }

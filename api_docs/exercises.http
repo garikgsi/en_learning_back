@@ -11,7 +11,12 @@ Authorization: Bearer {{accessToken}}
 # @name createUserExercise
 POST {{baseUrl}}/api/v1/exercises
 Accept: application/json
+Content-Type: application/json
 Authorization: Bearer {{accessToken}}
+
+{
+    "type": "translate"
+}
 
 ### Get uncompleted exercises due today
 # Plural exercise items contain the singular dictionary word in `word` and

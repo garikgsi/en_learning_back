@@ -2,9 +2,7 @@
 
 namespace App\Http\Requests\Api\V1;
 
-use App\Enums\PersonalPronoun;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class GrammarRaceCompleteRequest extends FormRequest
 {
@@ -22,8 +20,10 @@ class GrammarRaceCompleteRequest extends FormRequest
             'rounds' => ['required', 'array', 'min:1', 'max:500'],
             'rounds.*' => ['required', 'array'],
             'rounds.*.taskPosition' => ['required', 'integer', 'min:1'],
-            'rounds.*.playerAnswer' => ['present', 'nullable', Rule::enum(PersonalPronoun::class)],
-            'rounds.*.playerAnswerMs' => ['present', 'nullable', 'integer', 'min:0', 'max:30000'],
+            'rounds.*.playerAnswer' => ['present', 'nullable', 'string', 'max:64'],
+            'rounds.*.playerAnswerMs' => ['present', 'nullable', 'integer', 'min:0', 'max:100000'],
+            'rounds.*.secondPlayerAnswer' => ['sometimes', 'nullable', 'string', 'max:64'],
+            'rounds.*.secondPlayerAnswerMs' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:100000'],
         ];
     }
 }

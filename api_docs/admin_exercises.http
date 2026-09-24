@@ -1,8 +1,7 @@
 ### Select a recipient for a manually assigned daily exercise
 # Administrators only (401 without authentication, 403 for ordinary users).
-# Returns items with id, name, phone, grade (nullable), avatar and totalEarnedCoins.
-# totalEarnedCoins is the lifetime sum of positive EnCoin accruals and does not
-# decrease after withdrawals. Additional response fields are backwards compatible.
+# Returns non-technical users with id, name, phone, grade (nullable), avatar and
+# the current EnCoin balance. Accounts marked as test accounts are excluded.
 # @name getAdminExerciseUsers
 GET {{baseUrl}}/api/v1/admin/users
 Accept: application/json

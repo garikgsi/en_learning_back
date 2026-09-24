@@ -12,6 +12,7 @@
 # rublesPerCoin is the current database rate (initially 10).
 # totalEarnedRubles sums positive rewards at the rate at each award, in kopecks.
 # totalEarnedCoins sums all positive rewards, including bonuses and withdrawn coins.
+# hasCompletedDailyThisWeek shows whether withdrawal's weekly activity rule is met.
 # Withdrawals and subsequent rate changes do not reduce/revalue lifetime earnings.
 # Each new reward, including the weekly bonus, creates an encoin.credited notification
 # linking to /balance with amount and new balance.
@@ -21,7 +22,9 @@ Accept: application/json
 Authorization: Bearer {{accessToken}}
 
 ### Reserve coins for a withdrawal request
-# Available balance must be >=50. Coins must be a positive integer <=available.
+# Available balance must be >=50 and at least one daily exercise assigned for the
+# current Europe/Moscow week must have been completed during that week.
+# Coins must be a positive integer <=available.
 # Store a stable clientRequestId for retries of the same requested amount.
 # Identical retry returns the same item with 200; first creation returns 201.
 # Coins remain in balance but are reserved until an administrator processes it.

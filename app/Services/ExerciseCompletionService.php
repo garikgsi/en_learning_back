@@ -62,9 +62,10 @@ class ExerciseCompletionService
                     return $this->existingResult($existing, $requestHash);
                 }
 
-                if (
-                    (int) $lockedExercise->type_id
-                        === ExerciseTypeCode::user->value
+                if (in_array((int) $lockedExercise->type_id, [
+                    ExerciseTypeCode::user->value,
+                    ExerciseTypeCode::userPlural->value,
+                ], true)
                     && $lockedExercise->completions()->exists()
                 ) {
                     throw new UserExerciseAlreadyCompletedException;

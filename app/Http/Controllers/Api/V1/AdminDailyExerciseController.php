@@ -19,10 +19,9 @@ class AdminDailyExerciseController extends Controller
 
         return response()->json([
             'items' => User::query()
+                ->nonTest()
                 ->with('info')
-                ->withSum([
-                    'enCoinEntries as total_earned_coins' => fn ($query) => $query->where('amount', '>', 0),
-                ], 'amount')
+                ->withSum('enCoinEntries as current_balance', 'amount')
                 ->orderBy('name')->orderBy('id')->get()
                 ->map(fn (User $user): array => [
                     'id' => $user->id,
@@ -30,7 +29,7 @@ class AdminDailyExerciseController extends Controller
                     'phone' => $user->phone,
                     'grade' => $user->grade,
                     'avatar' => $user->avatar,
-                    'totalEarnedCoins' => (int) ($user->total_earned_coins ?? 0),
+                    'balance' => (int) ($user->current_balance ?? 0),
                 ])->all(),
         ]);
     }

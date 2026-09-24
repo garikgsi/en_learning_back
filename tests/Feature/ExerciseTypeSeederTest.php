@@ -17,7 +17,7 @@ class ExerciseTypeSeederTest extends TestCase
         $this->seed(ExerciseTypesSeeder::class);
         $this->seed(ExerciseTypesSeeder::class);
 
-        $this->assertDatabaseCount('exercise_type', 4);
+        $this->assertDatabaseCount('exercise_type', 5);
         $this->assertDatabaseHas('exercise_type', [
             'id' => ExerciseTypeCode::daily->value,
             'name' => ExerciseTypeCode::daily->name,
@@ -37,6 +37,11 @@ class ExerciseTypeSeederTest extends TestCase
             'id' => ExerciseTypeCode::plural->value,
             'name' => ExerciseTypeCode::plural->name,
             'title' => ExerciseTypeCode::plural->title(),
+        ]);
+        $this->assertDatabaseHas('exercise_type', [
+            'id' => ExerciseTypeCode::userPlural->value,
+            'name' => ExerciseTypeCode::userPlural->name,
+            'title' => ExerciseTypeCode::userPlural->title(),
         ]);
     }
 
@@ -59,6 +64,10 @@ class ExerciseTypeSeederTest extends TestCase
         $this->assertSame(
             ExerciseTypeCode::plural->value,
             ExerciseType::forCode(ExerciseTypeCode::plural)->id,
+        );
+        $this->assertSame(
+            ExerciseTypeCode::userPlural->value,
+            ExerciseType::forCode(ExerciseTypeCode::userPlural)->id,
         );
     }
 }

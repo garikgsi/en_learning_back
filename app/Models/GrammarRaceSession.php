@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\GrammarRaceGameCode;
+use App\Enums\GrammarRacePlayMode;
 use App\Enums\GrammarRaceSessionStatus;
 use App\Enums\GrammarRaceTaskMode;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'user_id',
     'client_request_id',
     'game_code',
+    'play_mode',
     'play_date',
     'attempt_number',
     'entry_cost',
@@ -63,6 +65,7 @@ class GrammarRaceSession extends Model
     {
         return [
             'game_code' => GrammarRaceGameCode::class,
+            'play_mode' => GrammarRacePlayMode::class,
             'task_mode' => GrammarRaceTaskMode::class,
             'status' => GrammarRaceSessionStatus::class,
             'play_date' => 'immutable_date',

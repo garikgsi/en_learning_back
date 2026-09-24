@@ -128,7 +128,7 @@ class User extends Authenticatable
         return Attribute::get(
             fn (): ?int => $this->info === null
                 ? null
-                : max(0, now()->year - $this->info->first_grade_year),
+                : min(11, max(0, now()->year - $this->info->first_grade_year)),
         );
     }
 

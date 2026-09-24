@@ -34,6 +34,16 @@ class UserInfoModelTest extends TestCase
         $this->assertSame(5, $user->grade);
     }
 
+    public function test_user_grade_cannot_exceed_eleventh_grade(): void
+    {
+        $user = User::factory()->create();
+        $user->info()->create([
+            'first_grade_year' => now()->year - 36,
+        ]);
+
+        $this->assertSame(11, $user->grade);
+    }
+
     public function test_user_can_have_only_one_user_info_record(): void
     {
         $user = User::factory()->create();

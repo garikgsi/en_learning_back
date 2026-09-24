@@ -61,4 +61,21 @@ class NotificationController extends Controller
                 ->resolve($request),
         );
     }
+
+    public function markAllRead(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user instanceof User, 401);
+        $readAt = now();
+
+        UserNotification::query()
+            ->where('user_id', $user->id)
+            ->whereNull('read_at')
+            ->update(['read_at' => $readAt]);
+
+        return response()->json([
+            'readAt' => $readAt->toISOString(),
+            'unreadCount' => 0,
+        ]);
+    }
 }

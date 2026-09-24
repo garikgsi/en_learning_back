@@ -10,6 +10,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\ExerciseCompleteRequest;
 use App\Http\Requests\Api\V1\ExerciseIndexRequest;
 use App\Http\Requests\Api\V1\ExerciseStatisticsRequest;
+use App\Http\Requests\Api\V1\ExerciseStoreRequest;
 use App\Http\Resources\Api\V1\ExerciseCompleteResource;
 use App\Http\Resources\Api\V1\ExerciseResource;
 use App\Models\Exercise;
@@ -17,6 +18,7 @@ use App\Models\User;
 use App\Services\ExerciseCompletionService;
 use App\Services\ExerciseService;
 use App\Services\ExerciseStatisticsService;
+use App\Services\PluralExerciseService;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -26,8 +28,9 @@ use Illuminate\Support\Facades\DB;
 class ExerciseController extends Controller
 {
     public function store(
-        Request $request,
+        ExerciseStoreRequest $request,
         ExerciseService $exerciseService,
+        PluralExerciseService $pluralExerciseService,
     ): JsonResponse {
         $user = $this->authenticatedUser($request);
 
@@ -39,11 +42,16 @@ class ExerciseController extends Controller
         }
 
         $created = false;
+        $type = $request->validated('type') === 'plural'
+            ? ExerciseTypeCode::userPlural
+            : ExerciseTypeCode::user;
 
         try {
             $exercise = DB::transaction(function () use (
                 $exerciseService,
+                $pluralExerciseService,
                 $user,
+                $type,
                 &$created,
             ): Exercise {
                 User::query()
@@ -52,7 +60,7 @@ class ExerciseController extends Controller
                     ->firstOrFail();
 
                 $existing = $this->queryFor($user)
-                    ->where('type_id', ExerciseTypeCode::user->value)
+                    ->where('type_id', $type->value)
                     ->whereBetween('dueDate', [today(), today()->endOfDay()])
                     ->whereDoesntHave('completions')
                     ->oldest()
@@ -64,11 +72,9 @@ class ExerciseController extends Controller
 
                 $created = true;
 
-                return $exerciseService->create(
-                    ExerciseTypeCode::user,
-                    $user,
-                    today(),
-                );
+                return $type === ExerciseTypeCode::userPlural
+                    ? $pluralExerciseService->createUser($user, today())
+                    : $exerciseService->create($type, $user, today());
             });
         } catch (NoWordsAvailableException) {
             return response()->json([
@@ -212,7 +218,10 @@ class ExerciseController extends Controller
 
     private function isCompletedUserExercise(Exercise $exercise): bool
     {
-        return (int) $exercise->type_id === ExerciseTypeCode::user->value
+        return in_array((int) $exercise->type_id, [
+            ExerciseTypeCode::user->value,
+            ExerciseTypeCode::userPlural->value,
+        ], true)
             && $exercise->completions()->exists();
     }
 

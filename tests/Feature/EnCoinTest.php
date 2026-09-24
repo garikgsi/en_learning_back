@@ -210,6 +210,7 @@ class EnCoinTest extends TestCase
     {
         $user = User::factory()->create();
         $this->credit($user, 60);
+        $this->completeDailyThisWeek($user);
         $this->login($user);
         $payload = ['coins' => 50, 'clientRequestId' => (string) Str::uuid()];
         $first = $this->postJson('/api/v1/balance/withdrawals', $payload)->assertCreated()
@@ -228,6 +229,7 @@ class EnCoinTest extends TestCase
     {
         $user = User::factory()->create();
         $this->credit($user, 49);
+        $this->completeDailyThisWeek($user);
         $this->login($user);
         $this->postJson('/api/v1/balance/withdrawals', ['coins' => 1, 'clientRequestId' => (string) Str::uuid()])->assertUnprocessable();
         $this->credit($user, 1);
@@ -242,6 +244,7 @@ class EnCoinTest extends TestCase
     {
         $user = User::factory()->create();
         $this->credit($user, 100);
+        $this->completeDailyThisWeek($user);
         $service = app(EnCoinService::class);
         $first = $service->requestWithdrawal($user, 50, (string) Str::uuid())['request'];
         $second = $service->requestWithdrawal($user, 50, (string) Str::uuid())['request'];
@@ -277,6 +280,7 @@ class EnCoinTest extends TestCase
     {
         $user = User::factory()->create();
         $this->credit($user, 60);
+        $this->completeDailyThisWeek($user);
         $request = app(EnCoinService::class)->requestWithdrawal($user, 50, (string) Str::uuid())['request'];
         $admin = User::factory()->create(['role' => UserRole::admin]);
         $this->login($admin);
@@ -349,6 +353,7 @@ class EnCoinTest extends TestCase
     {
         $user = User::factory()->create();
         $this->credit($user, 60);
+        $this->completeDailyThisWeek($user);
         $service = app(EnCoinService::class);
         $request = $service->requestWithdrawal($user, 50, (string) Str::uuid())['request'];
         $admin = User::factory()->create(['role' => UserRole::admin]);
@@ -362,6 +367,54 @@ class EnCoinTest extends TestCase
         $this->assertSame(0, $user->notifications()->count());
         $this->assertNull($request->refresh()->processed_at);
         $this->assertSame(60, $service->balance($user)['balance']);
+    }
+
+    public function test_withdrawal_requires_a_completed_daily_exercise_in_the_current_week(): void
+    {
+        $user = User::factory()->create();
+        $this->credit($user, 60);
+        $this->login($user);
+        $payload = ['coins' => 50, 'clientRequestId' => (string) Str::uuid()];
+        $partial = $this->exercise(
+            $user,
+            ExerciseTypeCode::daily,
+            CarbonImmutable::now(config('encoin.timezone'))->toDateString(),
+        );
+        $partial->completions()->create(['completed_at' => now()]);
+
+        $this->getJson('/api/v1/balance')
+            ->assertOk()
+            ->assertJsonPath('hasCompletedDailyThisWeek', false);
+        $this->postJson('/api/v1/balance/withdrawals', $payload)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('coins');
+
+        $this->completeDailyThisWeek($user);
+        $this->getJson('/api/v1/balance')
+            ->assertOk()
+            ->assertJsonPath('hasCompletedDailyThisWeek', true);
+        $this->postJson('/api/v1/balance/withdrawals', $payload)->assertCreated();
+    }
+
+    private function completeDailyThisWeek(User $user): void
+    {
+        $daily = $this->exercise(
+            $user,
+            ExerciseTypeCode::daily,
+            CarbonImmutable::now(config('encoin.timezone'))->toDateString(),
+        );
+        $completion = $daily->completions()->create(['completed_at' => now()]);
+        foreach ($daily->items as $item) {
+            foreach ([1, 2] as $lang) {
+                $completion->itemResults()->create([
+                    'exercise_item_id' => $item->id,
+                    'lang_id' => $lang,
+                    'errors_count' => 0,
+                    'hints_count' => 0,
+                    'variants' => [],
+                ]);
+            }
+        }
     }
 
     private function exercise(User $user, ExerciseTypeCode $type, string $date): Exercise

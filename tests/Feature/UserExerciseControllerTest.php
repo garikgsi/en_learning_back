@@ -63,6 +63,24 @@ class UserExerciseControllerTest extends TestCase
         $this->assertDatabaseCount('exercise', 0);
     }
 
+    public function test_user_can_choose_a_plural_self_study_exercise(): void
+    {
+        $this->seed(ExerciseTypesSeeder::class);
+        $user = $this->userWithGrade(4);
+
+        $this->withToken($this->accessToken($user))
+            ->postJson('/api/v1/exercises', ['type' => 'plural'])
+            ->assertCreated()
+            ->assertJsonPath('item.type.id', ExerciseTypeCode::userPlural->value)
+            ->assertJsonPath('item.type.name', ExerciseTypeCode::userPlural->name)
+            ->assertJsonPath('item.type.title', 'Пользовательское: множественное число');
+
+        $this->assertDatabaseHas('exercise', [
+            'user_id' => $user->id,
+            'type_id' => ExerciseTypeCode::userPlural->value,
+        ]);
+    }
+
     public function test_it_returns_the_existing_uncompleted_user_exercise_for_today(): void
     {
         $this->seed(ExerciseTypesSeeder::class);

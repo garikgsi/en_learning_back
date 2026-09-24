@@ -21,6 +21,8 @@ Authorization: Bearer {{accessToken}}
 # encoin.withdrawal.processed (administrator confirmed payment and coin deduction).
 # data.route=/balance; data.amount is signed, data.balance is balance after change.
 # data.amountRubles uses the reward/request rate snapshot.
+# Game level notifications use type grammar_race.level_up and route to
+# /achievements; data includes gameCode, gameTitle, rankTitle and level.
 # Notifications and push jobs are deduplicated by ledger entry; push follows
 # device preferences and the existing delivery window, after transaction commit.
 # @name syncNotifications
@@ -31,6 +33,12 @@ Authorization: Bearer {{accessToken}}
 ### Mark a notification as read
 # @name markNotificationRead
 PATCH {{baseUrl}}/api/v1/notifications/13c52fd9-4562-495c-86b7-177f19686ff6/read
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+### Mark all notifications as read
+# @name markAllNotificationsRead
+PATCH {{baseUrl}}/api/v1/notifications/read
 Accept: application/json
 Authorization: Bearer {{accessToken}}
 

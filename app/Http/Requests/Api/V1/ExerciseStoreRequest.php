@@ -2,16 +2,15 @@
 
 namespace App\Http\Requests\Api\V1;
 
-use App\Enums\GrammarRacePlayMode;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class GrammarRaceStartRequest extends FormRequest
+class ExerciseStoreRequest extends FormRequest
 {
     protected function prepareForValidation(): void
     {
-        if (! $this->has('playMode')) {
-            $this->merge(['playMode' => GrammarRacePlayMode::competitive->value]);
+        if (! $this->has('type')) {
+            $this->merge(['type' => 'translate']);
         }
     }
 
@@ -24,8 +23,7 @@ class GrammarRaceStartRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'clientRequestId' => ['required', 'uuid'],
-            'playMode' => ['required', Rule::enum(GrammarRacePlayMode::class)],
+            'type' => ['required', Rule::in(['translate', 'plural'])],
         ];
     }
 }

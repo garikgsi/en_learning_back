@@ -3,6 +3,7 @@
 namespace App\Notifications\Channels;
 
 use App\Models\UserNotification;
+use App\Notifications\Contracts\SkipsPushDelivery;
 use App\Notifications\Contracts\StoresInNotificationJournal;
 use App\Notifications\DeliverStoredNotificationPush;
 use App\Services\Notifications\PushDeliveryWindow;
@@ -35,6 +36,7 @@ class NotificationJournalChannel
             );
 
         if (! $storedNotification->wasRecentlyCreated
+            || $notification instanceof SkipsPushDelivery
             || ! config('notifications.push.enabled')) {
             return $storedNotification;
         }
