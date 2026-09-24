@@ -27,6 +27,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'bot_min_delay_ms',
     'bot_max_delay_ms',
     'answer_grace_ms',
+    'winning_score',
     'status',
     'student_score',
     'computer_score',
@@ -80,6 +81,7 @@ class GrammarRaceSession extends Model
             'bot_min_delay_ms' => 'integer',
             'bot_max_delay_ms' => 'integer',
             'answer_grace_ms' => 'integer',
+            'winning_score' => 'integer',
             'student_score' => 'integer',
             'computer_score' => 'integer',
         ];

@@ -27,7 +27,7 @@ class GrammarRaceResultValidator
         $studentScore = 0;
         $computerScore = 0;
         $rounds = [];
-        $winningScore = (int) config('grammar_race.winning_score');
+        $winningScore = $session->winning_score;
 
         foreach ($submittedRounds as $index => $submitted) {
             if ($studentScore >= $winningScore || $computerScore >= $winningScore) {
@@ -136,7 +136,9 @@ class GrammarRaceResultValidator
         }
 
         if ($studentScore !== $winningScore && $computerScore !== $winningScore) {
-            throw ValidationException::withMessages(['rounds' => 'Матч должен завершаться при достижении пяти очков.']);
+            throw ValidationException::withMessages([
+                'rounds' => "Матч должен завершаться при достижении {$winningScore} очков.",
+            ]);
         }
 
         return compact('rounds', 'studentScore', 'computerScore');

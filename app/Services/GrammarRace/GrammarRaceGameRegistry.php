@@ -7,6 +7,7 @@ use App\Services\GrammarRace\Contracts\GrammarRaceGame;
 use App\Services\GrammarRace\Games\ArticlesGame;
 use App\Services\GrammarRace\Games\PersonalPronounsGame;
 use App\Services\GrammarRace\Games\PossessivePronounsGame;
+use App\Services\GrammarRace\Games\ToBeGame;
 
 class GrammarRaceGameRegistry
 {
@@ -17,11 +18,13 @@ class GrammarRaceGameRegistry
         PersonalPronounsGame $personalPronouns,
         PossessivePronounsGame $possessivePronouns,
         ArticlesGame $articles,
+        ToBeGame $toBe,
     ) {
         $this->games = [
             $personalPronouns->code()->value => $personalPronouns,
             $possessivePronouns->code()->value => $possessivePronouns,
             $articles->code()->value => $articles,
+            $toBe->code()->value => $toBe,
         ];
     }
 

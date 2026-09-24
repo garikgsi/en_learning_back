@@ -128,6 +128,7 @@ class GrammarRaceSessionService
                 'bot_min_delay_ms' => $botMinDelayMs,
                 'bot_max_delay_ms' => $botMaxDelayMs,
                 'answer_grace_ms' => $settings['answer_grace_ms'],
+                'winning_score' => $settings['winning_score'],
                 'status' => GrammarRaceSessionStatus::active,
                 'rules_version' => config('grammar_race.rules_version'),
                 'generator_version' => config('grammar_race.generator_version'),
@@ -189,7 +190,7 @@ class GrammarRaceSessionService
 
             $this->assertCanFinish($session, $clientCompletedAt);
             $validated = $this->resultValidator->validate($session, $rounds);
-            $studentWon = $validated['studentScore'] === (int) config('grammar_race.winning_score');
+            $studentWon = $validated['studentScore'] === $session->winning_score;
 
             $session->update([
                 'client_result_id' => $clientResultId,
@@ -278,14 +279,18 @@ class GrammarRaceSessionService
             ->with(['tasks', 'rounds'])
             ->first();
         $balance = $this->enCoinService->balance($user);
+        $game = $this->games->get($gameCode);
+        $currentLevel = $profile?->current_level ?? 1;
+        $levelSettings = $game->levels()[$currentLevel] ?? [];
 
         return [
             'gameCode' => $gameCode->value,
             'minGrade' => $this->minimumGrade($gameCode),
             'isAvailable' => $this->isGradeAvailable($user, $gameCode),
             'reactionTimeMultiplier' => $this->reactionTimeMultiplier($user),
-            'currentLevel' => $profile?->current_level ?? 1,
-            'maxLevel' => count($this->games->get($gameCode)->levels()),
+            'currentLevel' => $currentLevel,
+            'maxLevel' => count($game->levels()),
+            'winningScore' => (int) ($levelSettings['winning_score'] ?? config('grammar_race.winning_score')),
             'attemptsUsed' => $attemptsUsed,
             'attemptsRemaining' => max(0, $dailyAttempts - $attemptsUsed),
             'nextEntryCost' => $attemptsUsed >= $dailyAttempts

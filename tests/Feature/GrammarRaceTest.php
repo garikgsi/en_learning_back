@@ -15,6 +15,7 @@ use App\Services\GrammarRace\Data\PersonalPronounLexicon;
 use App\Services\GrammarRace\GrammarRaceDifficultyService;
 use App\Services\GrammarRace\PersonalPronounTaskGenerator;
 use App\Services\GrammarRace\PossessivePronounTaskGenerator;
+use App\Services\GrammarRace\ToBeTaskGenerator;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\SendQueuedNotifications;
@@ -283,6 +284,108 @@ class GrammarRaceTest extends TestCase
         $this->assertNotEmpty($articles->json('item.tasks.0.payload.translation'));
     }
 
+    public function test_to_be_has_present_and_clearly_marked_past_tense_levels(): void
+    {
+        $levels = config('grammar_race.games.to_be.levels');
+
+        $this->assertCount(10, $levels);
+        $this->assertSame(array_fill(0, 10, 'sentence'), collect($levels)->pluck('mode')->all());
+        foreach ($levels as $settings) {
+            $levelTasks = app(ToBeTaskGenerator::class)->generate($settings, 10);
+            $this->assertCount(10, $levelTasks);
+            foreach ($levelTasks as $task) {
+                $this->assertNotEmpty($task->payload['translation']);
+            }
+        }
+
+        $presentTasks = app(ToBeTaskGenerator::class)->generate($levels[1], 30);
+        $this->assertSame(
+            ['am', 'are', 'is'],
+            collect($presentTasks)->pluck('correctAnswer')->unique()->sort()->values()->all(),
+        );
+        foreach ($presentTasks as $task) {
+            $this->assertSame(['am', 'is', 'are'], collect($task->options)->pluck('id')->all());
+            $this->assertNotEmpty($task->payload['translation']);
+        }
+
+        $advancedTasks = app(ToBeTaskGenerator::class)->generate($levels[10], 50);
+        $this->assertSame(
+            ['am', 'are', 'is', 'was', 'were'],
+            collect($advancedTasks)->pluck('correctAnswer')->unique()->sort()->values()->all(),
+        );
+
+        foreach ($advancedTasks as $task) {
+            $this->assertSame(['am', 'is', 'are', 'was', 'were'], collect($task->options)->pluck('id')->all());
+            $this->assertSame(1, substr_count($task->payload['text'], '___'));
+            $this->assertDoesNotMatchRegularExpression('/\S___|___\S/u', $task->payload['text']);
+            $this->assertStringNotContainsString('___', $task->payload['feedback']['correctText']);
+            $this->assertDoesNotMatchRegularExpression('/\s{2,}/u', $task->payload['feedback']['correctText']);
+            $this->assertNotEmpty($task->payload['translation']);
+            $this->assertSame($task->payload['translation'], $task->payload['feedback']['translation']);
+
+            if (in_array($task->correctAnswer, ['was', 'were'], true)) {
+                $this->assertMatchesRegularExpression('/\b(yesterday|last|ago)\b/i', $task->payload['text']);
+            } else {
+                $this->assertMatchesRegularExpression('/\b(today|now)\b/i', $task->payload['text']);
+            }
+        }
+    }
+
+    public function test_every_game_increases_winning_score_evenly_from_five_to_ten(): void
+    {
+        $this->assertSame(
+            [5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 8, 9, 9, 9, 9, 10, 10],
+            collect(config('grammar_race.games.personal_pronouns.levels'))->pluck('winning_score')->all(),
+        );
+        $this->assertSame(
+            [5, 6, 8, 9, 10],
+            collect(config('grammar_race.games.possessive_pronouns.levels'))->pluck('winning_score')->all(),
+        );
+        $this->assertSame(
+            [5, 6, 6, 7, 7, 8, 8, 9, 9, 10],
+            collect(config('grammar_race.games.articles.levels'))->pluck('winning_score')->all(),
+        );
+        $this->assertSame(
+            [5, 6, 6, 7, 7, 8, 8, 9, 9, 10],
+            collect(config('grammar_race.games.to_be.levels'))->pluck('winning_score')->all(),
+        );
+    }
+
+    public function test_to_be_is_available_from_second_grade_and_uses_its_level_winning_score(): void
+    {
+        $user = User::factory()->create();
+        $user->info()->create(['first_grade_year' => now()->year - 2]);
+        GrammarRaceProfile::query()->create([
+            'user_id' => $user->id,
+            'game_code' => GrammarRaceGameCode::toBe,
+            'current_level' => 10,
+            'max_level' => 10,
+        ]);
+        $this->login($user);
+
+        $this->getJson('/api/v1/grammar-race-games/to_be/status')
+            ->assertOk()
+            ->assertJsonPath('minGrade', 2)
+            ->assertJsonPath('isAvailable', true)
+            ->assertJsonPath('currentLevel', 10)
+            ->assertJsonPath('winningScore', 10);
+
+        $start = $this->startRace(gameCode: 'to_be')
+            ->assertCreated()
+            ->assertJsonPath('item.gameCode', 'to_be')
+            ->assertJsonPath('item.winningScore', 10)
+            ->assertJsonPath('item.tasks.0.payload.instruction', 'Выберите правильную форму глагола to be');
+
+        $session = $start->json('item');
+        $this->postJson(
+            '/api/v1/grammar-race-sessions/'.$session['id'].'/complete',
+            $this->winningPayload($session, (string) Str::uuid()),
+        )
+            ->assertCreated()
+            ->assertJsonPath('item.status', 'student_won')
+            ->assertJsonPath('item.score.student', 10);
+    }
+
     public function test_achievements_list_every_game_and_normalize_medals_to_five_colours(): void
     {
         $user = User::factory()->create();
@@ -291,7 +394,7 @@ class GrammarRaceTest extends TestCase
 
         $this->getJson('/api/v1/grammar-race-achievements')
             ->assertOk()
-            ->assertJsonCount(3, 'items')
+            ->assertJsonCount(4, 'items')
             ->assertJsonPath('levelUp.minimumGames', 5)
             ->assertJsonPath('levelUp.minimumWinRatePercent', 70)
             ->assertJsonPath('items.0.gameCode', 'personal_pronouns')
@@ -310,7 +413,12 @@ class GrammarRaceTest extends TestCase
             ->assertJsonPath('items.2.gameTitle', 'Гонка артиклей')
             ->assertJsonPath('items.2.rankTitle', 'Знаток артиклей')
             ->assertJsonPath('items.2.maxLevel', 10)
-            ->assertJsonPath('items.2.isAvailable', true);
+            ->assertJsonPath('items.2.isAvailable', true)
+            ->assertJsonPath('items.3.gameCode', 'to_be')
+            ->assertJsonPath('items.3.gameTitle', 'Форма глагола to be')
+            ->assertJsonPath('items.3.rankTitle', 'Знаток глагола to be')
+            ->assertJsonPath('items.3.maxLevel', 10)
+            ->assertJsonPath('items.3.isAvailable', true);
 
         GrammarRaceProfile::query()->create([
             'user_id' => $user->id,
@@ -706,7 +814,7 @@ class GrammarRaceTest extends TestCase
         return [
             'clientResultId' => $resultId,
             'completedAt' => $completedAt ?? now()->addMinute()->toISOString(),
-            'rounds' => collect($session['tasks'])->take(5)->map(fn (array $task): array => [
+            'rounds' => collect($session['tasks'])->take($session['winningScore'])->map(fn (array $task): array => [
                 'taskPosition' => $task['position'],
                 'playerAnswer' => $task['correctAnswer'],
                 'playerAnswerMs' => 0,

@@ -29,7 +29,7 @@ class GrammarRaceSessionResource extends JsonResource
                 'botMaxDelayMs' => $this->bot_max_delay_ms,
                 'answerGraceMs' => $this->answer_grace_ms,
             ],
-            'winningScore' => (int) config('grammar_race.winning_score'),
+            'winningScore' => $this->winning_score,
             'score' => [
                 'student' => $this->student_score,
                 'computer' => $this->computer_score,
