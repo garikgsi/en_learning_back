@@ -96,6 +96,12 @@ class User extends Authenticatable
         return $this->hasMany(GrammarRaceProfile::class);
     }
 
+    /** @return HasOne<DachshundGameRecord, $this> */
+    public function dachshundGameRecord(): HasOne
+    {
+        return $this->hasOne(DachshundGameRecord::class);
+    }
+
     /**
      * @return HasMany<UserNotification, $this>
      */

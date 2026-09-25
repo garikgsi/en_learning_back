@@ -1,0 +1,222 @@
+{
+  "source": "Clairesalphabet",
+  "locale": "en-GB",
+  "speaker": "Claire",
+  "sourceAuthor": "groovy turnokk",
+  "sourcePage": "https://www.101soundboards.com/sounds/27046881-clairesalphabet-alphabet-british-english-at-groovy-turnokk",
+  "sourceSha256": "13a1cb069fcfb4e0253fd7c3cf3a13d2c1473b5c297dcfc7011fbd309255171f",
+  "sourceDurationSeconds": 75.89,
+  "selection": "First utterance in each letter-name/phoneme pair; letter names only.",
+  "processing": "60-80 ms edge padding, mono 44.1 kHz MP3, loudness normalization to -18 LUFS, short edge fades.",
+  "license": "License not verified from the original Freesound item; clear redistribution rights before production release.",
+  "files": [
+    {
+      "letter": "A",
+      "cachedFile": "a.mp3",
+      "startSeconds": 1.122,
+      "endSeconds": 1.592,
+      "durationSeconds": 0.47,
+      "sha256": "dd2ba743ece35ab4a1e0b1350d18645c84f06fb7ceaa7931df36c073b70d7872"
+    },
+    {
+      "letter": "B",
+      "cachedFile": "b.mp3",
+      "startSeconds": 3.986,
+      "endSeconds": 4.422,
+      "durationSeconds": 0.436,
+      "sha256": "4a2f9b3abe14012669b3e97b992d18c7657ea509d1a5173b7e02548a7b0e631a"
+    },
+    {
+      "letter": "C",
+      "cachedFile": "c.mp3",
+      "startSeconds": 6.625,
+      "endSeconds": 7.234,
+      "durationSeconds": 0.609,
+      "sha256": "fe2d3ab60fdbf396fe8abe795bcaddab3fb964a9bab4e8a40e29320ff20af09c"
+    },
+    {
+      "letter": "D",
+      "cachedFile": "d.mp3",
+      "startSeconds": 9.379,
+      "endSeconds": 9.843,
+      "durationSeconds": 0.464,
+      "sha256": "370188bb71c92173294bd17fa6abad1e10079eee6ec22c8f48e1689224b18a06"
+    },
+    {
+      "letter": "E",
+      "cachedFile": "e.mp3",
+      "startSeconds": 12.095,
+      "endSeconds": 12.551,
+      "durationSeconds": 0.456,
+      "sha256": "c09410cf6386a22e8df09985306e39326663dcf0215e1dd17bc0adffdfa3170f"
+    },
+    {
+      "letter": "F",
+      "cachedFile": "f.mp3",
+      "startSeconds": 14.871,
+      "endSeconds": 15.258,
+      "durationSeconds": 0.387,
+      "sha256": "2481e1a7cdbfb084c929639e3ec8ae3f22645e5ff7369466bf13589ad6c7ae9e"
+    },
+    {
+      "letter": "G",
+      "cachedFile": "g.mp3",
+      "startSeconds": 17.637,
+      "endSeconds": 18.181,
+      "durationSeconds": 0.544,
+      "sha256": "3158b246a3ec6e306dfe27f04e90b4604f6d838e7f9c26fc276398c232f729c0"
+    },
+    {
+      "letter": "H",
+      "cachedFile": "h.mp3",
+      "startSeconds": 20.45,
+      "endSeconds": 21.11,
+      "durationSeconds": 0.66,
+      "sha256": "b9ae0334be75c441623aeddc5d0fa2c9cd6b555ab7d596ce19443d78b3e96bd1"
+    },
+    {
+      "letter": "I",
+      "cachedFile": "i.mp3",
+      "startSeconds": 23.187,
+      "endSeconds": 23.697,
+      "durationSeconds": 0.51,
+      "sha256": "9b231777241c0a633d3863e11e2f0e1f4b67ce997ae242ea1375f314facbab6d"
+    },
+    {
+      "letter": "J",
+      "cachedFile": "j.mp3",
+      "startSeconds": 25.971,
+      "endSeconds": 26.548,
+      "durationSeconds": 0.577,
+      "sha256": "3bd77b71e9704f30c491af1aecc8f86639319cb622bfebbbb19c0344307ecc10"
+    },
+    {
+      "letter": "K",
+      "cachedFile": "k.mp3",
+      "startSeconds": 28.849,
+      "endSeconds": 29.422,
+      "durationSeconds": 0.573,
+      "sha256": "b7bb1865c8480d9234f002ce8f04db5e09c1562a7c98db19651016235addf900"
+    },
+    {
+      "letter": "L",
+      "cachedFile": "l.mp3",
+      "startSeconds": 31.708,
+      "endSeconds": 32.274,
+      "durationSeconds": 0.566,
+      "sha256": "14470c71d7444dbb3b767d64a8d880e8804dbc73e377059ad14cbc4593663594"
+    },
+    {
+      "letter": "M",
+      "cachedFile": "m.mp3",
+      "startSeconds": 34.593,
+      "endSeconds": 35.158,
+      "durationSeconds": 0.565,
+      "sha256": "eebd71c91af833f2bb3be1fb1d55392719ebd9c063b13aacfe6cce5a8cea6e68"
+    },
+    {
+      "letter": "N",
+      "cachedFile": "n.mp3",
+      "startSeconds": 37.31,
+      "endSeconds": 37.87,
+      "durationSeconds": 0.56,
+      "sha256": "963206976a4b72b04cdc497fe5dbdb22291437fa19ff6965e8458ea3e9298df2"
+    },
+    {
+      "letter": "O",
+      "cachedFile": "o.mp3",
+      "startSeconds": 40.24,
+      "endSeconds": 40.81,
+      "durationSeconds": 0.57,
+      "sha256": "dafe8bde353f693d1f2c774887ceca72dc8f2044a1c66cb483ffc20b2a513023"
+    },
+    {
+      "letter": "P",
+      "cachedFile": "p.mp3",
+      "startSeconds": 43.136,
+      "endSeconds": 43.705,
+      "durationSeconds": 0.569,
+      "sha256": "6dfd35743a1b4b4ab786fec561d7bef2e14cac8b5a1cab114aa4c0adb6f8d397"
+    },
+    {
+      "letter": "Q",
+      "cachedFile": "q.mp3",
+      "startSeconds": 45.842,
+      "endSeconds": 46.479,
+      "durationSeconds": 0.637,
+      "sha256": "e6d8d6f79c4209cdcc8e1661cf2834c04da621c23f5cc8d23b91df3392210d64"
+    },
+    {
+      "letter": "R",
+      "cachedFile": "r.mp3",
+      "startSeconds": 48.853,
+      "endSeconds": 49.455,
+      "durationSeconds": 0.602,
+      "sha256": "0a878cf02d374bfedb012d7b8801aee26a3f8a80c228509c03fae80c2ca19aae"
+    },
+    {
+      "letter": "S",
+      "cachedFile": "s.mp3",
+      "startSeconds": 51.762,
+      "endSeconds": 52.439,
+      "durationSeconds": 0.677,
+      "sha256": "50c4384acaddc191c596ffcb03507bb32541a0065e7e317b6784c275768a357c"
+    },
+    {
+      "letter": "T",
+      "cachedFile": "t.mp3",
+      "startSeconds": 54.462,
+      "endSeconds": 55.017,
+      "durationSeconds": 0.555,
+      "sha256": "6b739f66869b3fe09b01e0f84c274d3e8b94d0326c53ef8cfd0f2b863ce6af0b"
+    },
+    {
+      "letter": "U",
+      "cachedFile": "u.mp3",
+      "startSeconds": 57.048,
+      "endSeconds": 57.726,
+      "durationSeconds": 0.678,
+      "sha256": "f80941284cf398debbd4563b082218e7a3e131465387b1d22ab638cb288c4fca"
+    },
+    {
+      "letter": "V",
+      "cachedFile": "v.mp3",
+      "startSeconds": 59.913,
+      "endSeconds": 60.377,
+      "durationSeconds": 0.464,
+      "sha256": "54debe905b742268333112c8cc5e637bbf163c9db17fcf80302a322b5bcdf95f"
+    },
+    {
+      "letter": "W",
+      "cachedFile": "w.mp3",
+      "startSeconds": 62.677,
+      "endSeconds": 63.406,
+      "durationSeconds": 0.729,
+      "sha256": "03e92545e7debdb09b739dc00a8001aebdc0253d8eedf1324970b06f61f36729"
+    },
+    {
+      "letter": "X",
+      "cachedFile": "x.mp3",
+      "startSeconds": 65.498,
+      "endSeconds": 66.225,
+      "durationSeconds": 0.727,
+      "sha256": "9472be2811f4f7788cad6a327edb4034304fb80ec567f7a304af8a285f018a01"
+    },
+    {
+      "letter": "Y",
+      "cachedFile": "y.mp3",
+      "startSeconds": 68.582,
+      "endSeconds": 69.263,
+      "durationSeconds": 0.681,
+      "sha256": "2d3c5f0268338705f8b05cb45c89f132f027480e6235134c6bd2a84b4d443e81"
+    },
+    {
+      "letter": "Z",
+      "cachedFile": "z.mp3",
+      "startSeconds": 71.405,
+      "endSeconds": 71.988,
+      "durationSeconds": 0.583,
+      "sha256": "12a21a69155439bf9b2f19eaf0c62f2edd3b571f75b3da50422fdb434cbeb052"
+    }
+  ]
+}

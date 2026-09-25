@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\Auth\RefreshTokenController;
 use App\Http\Controllers\Api\V1\Auth\RegisterController;
 use App\Http\Controllers\Api\V1\BalanceController;
 use App\Http\Controllers\Api\V1\DictionaryController;
+use App\Http\Controllers\Api\V1\DachshundGameController;
 use App\Http\Controllers\Api\V1\ExerciseController;
 use App\Http\Controllers\Api\V1\GrammarRaceAchievementController;
 use App\Http\Controllers\Api\V1\GrammarRaceController;
@@ -34,6 +35,9 @@ Route::prefix('v1')->group(function (): void {
         '/dictionary/plurals/{plural}/audio',
         [DictionaryController::class, 'pluralAudio'],
     )->whereNumber('plural');
+    Route::get('/dachshund-game/audio', [DachshundGameController::class, 'audioManifest']);
+    Route::get('/dachshund-game/audio/{letter}', [DachshundGameController::class, 'letterAudio'])
+        ->where('letter', '[a-zA-Z]');
 
     Route::middleware('access.token')->group(function (): void {
         Route::get('/app-updates/latest', AppUpdateController::class);
@@ -86,6 +90,8 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/exercises/{exercise}', [ExerciseController::class, 'show'])
             ->whereNumber('exercise');
         Route::post('/exercises/complete', [ExerciseController::class, 'complete']);
+        Route::get('/dachshund-game/records', [DachshundGameController::class, 'records']);
+        Route::post('/dachshund-game/results', [DachshundGameController::class, 'store']);
         Route::get('/grammar-race-achievements', GrammarRaceAchievementController::class);
         Route::get('/grammar-race-games/{gameCode}/status', [GrammarRaceController::class, 'status']);
         Route::post('/grammar-race-games/{gameCode}/sessions', [GrammarRaceController::class, 'start']);

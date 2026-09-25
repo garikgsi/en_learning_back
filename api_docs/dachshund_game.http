@@ -1,0 +1,27 @@
+### Get the player's cached records at game start
+# @name getDachshundGameRecords
+GET {{baseUrl}}/api/v1/dachshund-game/records
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+### Save one completed game after a wrong letter or a fall
+# @name saveDachshundGameResult
+POST {{baseUrl}}/api/v1/dachshund-game/results
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+    "score": 42
+}
+
+### Get the versioned British English alphabet-audio manifest
+# @name getDachshundAudioManifest
+GET {{baseUrl}}/api/v1/dachshund-game/audio
+Accept: application/json
+
+### Download one immutable letter recording
+# Use a URL returned by getDachshundAudioManifest so the cache version stays current.
+# @name getDachshundLetterAudio
+GET {{baseUrl}}/api/v1/dachshund-game/audio/a?v=example-version
+Accept: audio/mpeg
