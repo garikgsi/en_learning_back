@@ -1,13 +1,15 @@
 # British English letter recordings
 
-These clips are cut from the single-speaker `Clairesalphabet` recording by
-Claire (`groovy turnokk`). The source alternates each letter name with its
-phoneme; the game uses only the letter-name takes.
+The 26 MP3 files are generated separately with the British English female
+Voice RSS voice `Lily`. Independent generation avoids timing and clipping
+errors caused by cutting a long alphabet recording.
 
-Run `scripts/cache-dachshund-letter-audio.ps1 -SourceFile <recording.mp3>` to
-rebuild the 26 normalized MP3 files. Exact cut ranges and output hashes are
-stored in `sources.json`.
+Run the following command in the application container to refresh the pack:
 
-The mirror did not expose reliable original-license metadata. Treat these
-files as prototype-only until redistribution rights are confirmed from the
-original Freesound item or directly with the author.
+```shell
+php artisan dachshund:cache-letter-audio --locale=en-GB --voice=Lily
+```
+
+`sources.json` records the provider, generation settings, and output hashes.
+Use of the generated audio is subject to the terms of the configured Voice RSS
+account.
