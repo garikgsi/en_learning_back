@@ -126,21 +126,27 @@ class GrammarRaceTest extends TestCase
         $this->assertSame([24000], collect($levels)->pluck('bot_min_delay_ms')->unique()->values()->all());
         $this->assertSame(['sentence'], collect($levels)->pluck('mode')->unique()->values()->all());
 
-        $tasks = app(PossessivePronounTaskGenerator::class)->generate($levels[5], 49);
-        $this->assertCount(49, $tasks);
+        $tasks = app(PossessivePronounTaskGenerator::class)->generate($levels[5], 60);
+        $this->assertCount(60, $tasks);
         $this->assertSame(
-            ['her', 'his', 'its', 'my', 'our', 'their', 'your'],
+            ['her', 'hers', 'his', 'its', 'mine', 'my', 'our', 'ours', 'their', 'theirs', 'your', 'yours'],
             collect($tasks)->pluck('correctAnswer')->unique()->sort()->values()->all(),
         );
 
         foreach ($tasks as $task) {
             $this->assertSame('single_choice', $task->type);
             $this->assertStringContainsString('___', $task->payload['text']);
-            $this->assertMatchesRegularExpression('/___\s+\S/u', $task->payload['text']);
+            $this->assertMatchesRegularExpression('/___(?:\s+\S|\.)/u', $task->payload['text']);
             $this->assertStringNotContainsString('___', $task->payload['feedback']['correctText']);
             $this->assertNotEmpty($task->payload['feedback']['translation']);
+            $this->assertGreaterThanOrEqual(
+                2,
+                preg_match_all('/[.?!](?:\s|$)/u', $task->payload['feedback']['translation']),
+            );
+            $this->assertStringNotContainsString(' own ', strtolower($task->payload['text']));
+            $this->assertStringNotContainsString(' owns ', strtolower($task->payload['text']));
             $this->assertNull($task->payload['translation']);
-            $this->assertCount(7, $task->options);
+            $this->assertCount(12, $task->options);
             $this->assertGreaterThanOrEqual(24000, $task->botDelayMs);
             $this->assertLessThanOrEqual(31500, $task->botDelayMs);
         }
@@ -148,17 +154,36 @@ class GrammarRaceTest extends TestCase
         $expectedExplanations = [
             'my' => 'Предмет принадлежит мне (I), поэтому используем my.',
             'your' => 'Предмет принадлежит тебе или вам (you), поэтому используем your.',
-            'his' => 'Собственник — мальчик или мужчина (he), поэтому используем his.',
+            'his' => 'Когда мы знаем, что предмет принадлежит ему (he), используем his.',
             'her' => 'Собственник — девочка или женщина (she), поэтому используем her.',
             'its' => 'Собственник — животное или предмет (it), поэтому используем its.',
             'our' => 'Предмет принадлежит нам (we), поэтому используем our.',
             'their' => 'Предмет принадлежит нескольким людям, животным или предметам (they), поэтому используем their.',
+            'mine' => 'Когда мы знаем, что предмет принадлежит мне (I), можем сказать, что он мой (mine).',
+            'yours' => 'Когда мы знаем, что предмет принадлежит тебе или вам (you), можем сказать, что он твой или ваш (yours).',
+            'hers' => 'Когда мы знаем, что предмет принадлежит ей (she), можем сказать, что он её (hers).',
+            'ours' => 'Когда мы знаем, что предмет принадлежит нам (we), можем сказать, что он наш (ours).',
+            'theirs' => 'Когда мы знаем, что предмет принадлежит им (they), можем сказать, что он их (theirs).',
         ];
         foreach ($expectedExplanations as $answer => $explanation) {
             $task = collect($tasks)->firstWhere('correctAnswer', $answer);
             $this->assertNotNull($task);
             $this->assertSame($explanation, $task->payload['feedback']['explanation']);
         }
+
+        $introTasks = app(PossessivePronounTaskGenerator::class)->generate($levels[1], 12);
+        foreach (['mine', 'yours', 'his', 'hers', 'ours', 'theirs'] as $answer) {
+            $task = collect($introTasks)->firstWhere('correctAnswer', $answer);
+            $this->assertNotNull($task);
+            $this->assertMatchesRegularExpression('/___\./u', $task->payload['text']);
+            $this->assertGreaterThanOrEqual(2, substr_count($task->payload['feedback']['translation'], '.'));
+        }
+
+        $yoursTask = collect($introTasks)->firstWhere('correctAnswer', 'yours');
+        $this->assertMatchesRegularExpression(
+            '/^У вас есть .+\. .+ — ваш(?:а|е|и)?\.$/u',
+            $yoursTask->payload['feedback']['translation'],
+        );
     }
 
     public function test_possessive_pronouns_require_fifth_grade_and_have_independent_free_attempt(): void
@@ -182,10 +207,11 @@ class GrammarRaceTest extends TestCase
             ->assertJsonPath('item.gameCode', 'possessive_pronouns')
             ->assertJsonPath('item.attemptNumber', 1)
             ->assertJsonPath('item.entryCost', 0)
+            ->assertJsonPath('item.winningScore', 10)
             ->assertJsonPath('item.difficulty.botMinDelayMs', 33600)
             ->assertJsonPath('item.difficulty.botMaxDelayMs', 63000)
             ->assertJsonPath('item.tasks.0.type', 'single_choice');
-        $this->assertCount(7, $possessive->json('item.tasks.0.options'));
+        $this->assertCount(12, $possessive->json('item.tasks.0.options'));
         $this->postJson(
             '/api/v1/grammar-race-sessions/'.$possessive->json('item.id').'/complete',
             $this->winningPayload($possessive->json('item'), (string) Str::uuid()),
@@ -331,14 +357,14 @@ class GrammarRaceTest extends TestCase
         }
     }
 
-    public function test_every_game_increases_winning_score_evenly_from_five_to_ten(): void
+    public function test_winning_scores_scale_by_level_and_possessive_pronouns_use_twice_as_many_tasks(): void
     {
         $this->assertSame(
             [5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 8, 9, 9, 9, 9, 10, 10],
             collect(config('grammar_race.games.personal_pronouns.levels'))->pluck('winning_score')->all(),
         );
         $this->assertSame(
-            [5, 6, 8, 9, 10],
+            [10, 12, 16, 18, 20],
             collect(config('grammar_race.games.possessive_pronouns.levels'))->pluck('winning_score')->all(),
         );
         $this->assertSame(

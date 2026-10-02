@@ -51,7 +51,7 @@ foreach (range(1, 5) as $level) {
         'answer_grace_ms' => 10000,
         'show_translation' => false,
         'content_level' => $level,
-        'winning_score' => $winningScore($level, 5),
+        'winning_score' => $winningScore($level, 5) * 2,
     ];
 }
 
@@ -120,8 +120,8 @@ return [
     'win_reward' => 2,
     'winning_score' => 5,
     'task_pack_size' => 50,
-    'rules_version' => '3',
-    'generator_version' => '8',
+    'rules_version' => '4',
+    'generator_version' => '10',
     'level_up' => [
         'minimum_games' => 5,
         'minimum_win_rate' => 0.70,
